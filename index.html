@@ -15,6 +15,8 @@
     }
 
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
+
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -34,6 +36,8 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
+      flex: 1;
+      min-height: 0;
     }
 
     h1 {
@@ -108,6 +112,8 @@
       grid-template-areas:
         "notes"
         "calc";
+      min-height: 0;
+      flex: 1;
     }
     #calculatorCard { grid-area: calc; }
     #notesPanel { grid-area: notes; }
@@ -116,7 +122,30 @@
       .layout {
         grid-template-columns: minmax(320px, 1.3fr) minmax(280px, 0.9fr);
         grid-template-areas: "calc notes";
-        align-items: start;
+        align-items: stretch;
+        grid-auto-rows: 1fr;
+        height: calc(100vh - 200px);
+      }
+
+      #calculatorCard,
+      #notesPanel {
+        height: 100%;
+        min-height: 0;
+      }
+
+      #calculatorCard {
+        overflow: auto;
+      }
+
+      #notesPanel {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      #notesPanel .notes-body {
+        flex: 1;
+        overflow: auto;
       }
     }
 
@@ -233,18 +262,26 @@
       cursor: pointer;
     }
 
-    .nonstandard-wrapper { position: relative; width: 100%; }
+    .nonstandard-wrapper { position: relative; width: auto; }
     .nonstandard-list {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      width: 100%;
-      margin-top: 6px;
+      width: max-content;
+      min-width: 240px;
+      position: absolute;
+      left: 0;
+      top: calc(100% + 6px);
+      padding: 8px;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 12px;
       overflow: hidden;
       max-height: 0;
       opacity: 0;
       transform: translateY(-6px);
       transition: max-height 200ms ease, opacity 180ms ease, transform 200ms ease;
+      z-index: 4;
     }
     .nonstandard-list.open {
       max-height: 500px;
@@ -618,6 +655,13 @@
       return safeText(notes);
     }
 
+    function notesToHtml(notes) {
+      const text = notesToText(notes);
+      if (!text) return "";
+      const escaped = escapeHtml(text);
+      return escaped.replace(/\\n/g, "<br>").replace(/\n/g, "<br>");
+    }
+
     function resolvePresetDoses() {
       const proto = selectedProtocolId ? protocolIndex.get(selectedProtocolId) : null;
       if (proto && Array.isArray(proto.doses) && proto.doses.length) return proto.doses;
@@ -720,7 +764,7 @@
       if (nonStandardToastTimer) clearTimeout(nonStandardToastTimer);
       nonStandardToastTimer = setTimeout(() => {
         toast.classList.remove("show");
-      }, 3000);
+      }, 4000);
     }
 
     function renderNotes() {
@@ -732,19 +776,19 @@
       if (!proto) {
         titleEl.textContent = "No protocol selected";
         subtitleEl.textContent = "Preset dose buttons use the default presets.";
-        notesEl.textContent = "Pick a protocol from the dropdown to load its preset dose buttons and notes.";
+        notesEl.innerHTML = escapeHtml("Pick a protocol from the dropdown to load its preset dose buttons and notes.");
         return;
       }
 
       titleEl.textContent = proto.name || proto.id;
       subtitleEl.textContent = "Preset dose buttons loaded from the selected protocol.";
 
-      const itemNotes = notesToText(proto.notes) || "No notes provided for this protocol.";
-      const doseNotes = selectedDoseNote && notesToText(selectedDoseNote).trim()
-        ? notesToText(selectedDoseNote)
-        : "No dose note selected.";
+      const itemNotesHtml = notesToHtml(proto.notes) || escapeHtml("No notes provided for this protocol.");
+      const doseNotesHtml = selectedDoseNote && notesToText(selectedDoseNote).trim()
+        ? notesToHtml(selectedDoseNote)
+        : escapeHtml("No dose note selected.");
 
-      notesEl.textContent = `${itemNotes}\n\nDose Notes:\n${doseNotes}`;
+      notesEl.innerHTML = `${itemNotesHtml}<br><br><strong>Dose Notes:</strong><br>${doseNotesHtml}`;
     }
 
     function selectProtocol(protoId) {
