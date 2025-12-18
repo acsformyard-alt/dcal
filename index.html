@@ -207,6 +207,7 @@
       box-shadow: 0 20px 50px rgba(0,0,0,0.6);
       position: relative;
       color: #fef2f2;
+      text-align: center;
     }
 
     .warning-bubble h4 {
@@ -219,7 +220,7 @@
 
     .warning-actions {
       display: flex;
-      justify-content: flex-end;
+      justify-content: center;
     }
 
     .warning-close {
@@ -232,10 +233,50 @@
       cursor: pointer;
     }
 
-    .nonstandard-list { display: none; flex-wrap: wrap; gap: 8px; width: 100%; margin-top: 6px; }
-    .nonstandard-list.open { display: flex; }
+    .nonstandard-wrapper { position: relative; width: 100%; }
+    .nonstandard-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+      margin-top: 6px;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: max-height 200ms ease, opacity 180ms ease, transform 200ms ease;
+    }
+    .nonstandard-list.open {
+      max-height: 500px;
+      opacity: 1;
+      transform: translateY(0);
+    }
     .nonstandard-toggle { background: #b45309; color: #0b1220; font-weight: 800; }
     .nonstandard-toggle:hover { background: #d97706; }
+
+    .nonstandard-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translate(-50%, 12px);
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid #b45309;
+      color: #fde68a;
+      padding: 10px 14px;
+      border-radius: 999px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 200ms ease, transform 200ms ease, visibility 200ms ease;
+      z-index: 6;
+      text-align: center;
+      font-weight: 650;
+    }
+    .nonstandard-toast.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, 0);
+    }
   </style>
 </head>
 <body>
@@ -304,6 +345,10 @@
     </div>
   </div>
 
+  <div class="nonstandard-toast" id="nonstandardToast" role="status" aria-live="polite">
+    You've selected a non-standard dose, please see the dose notes for more information
+  </div>
+
   <script>
     const DEFAULT_PRESET_DOSES = [
       { label: "0.25 mg", dose: "0.25", standard: 1 },
@@ -318,6 +363,9 @@
     let protocolIndex = new Map();
     let selectedProtocolId = null;
     let selectedDoseNote = null;
+    let currentNonStandardList = null;
+    let currentNonStandardToggle = null;
+    let nonStandardToastTimer = null;
 
     function showNonStandardWarning() {
       const overlay = document.getElementById("nonStandardWarning");
@@ -579,6 +627,7 @@
     function renderPresetButtons(doses) {
       const container = document.getElementById("presetButtons");
       container.innerHTML = "";
+      closeNonStandardList();
 
       const standardButtons = [];
       const nonStandardButtons = [];
@@ -604,6 +653,10 @@
 
           renderNotes();
           recalc();
+
+          if (kind === "nonstandard") {
+            showNonStandardToast();
+          }
         });
 
         return btn;
@@ -617,8 +670,6 @@
         }
       });
 
-      standardButtons.forEach(btn => container.appendChild(btn));
-
       if (nonStandardButtons.length) {
         const toggle = document.createElement("button");
         toggle.className = "pill-button nonstandard-toggle";
@@ -629,14 +680,47 @@
         nonStdList.className = "nonstandard-list";
         nonStandardButtons.forEach(btn => nonStdList.appendChild(btn));
 
-        toggle.addEventListener("click", () => {
-          const isOpen = nonStdList.classList.toggle("open");
-          toggle.classList.toggle("active", isOpen);
+        nonStdList.addEventListener("click", (event) => event.stopPropagation());
+
+        toggle.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const isOpen = !nonStdList.classList.contains("open");
+          closeNonStandardList();
+          if (isOpen) {
+            nonStdList.classList.add("open");
+            toggle.classList.add("active");
+            currentNonStandardList = nonStdList;
+            currentNonStandardToggle = toggle;
+          }
         });
 
-        container.appendChild(toggle);
-        container.appendChild(nonStdList);
+        const wrapper = document.createElement("div");
+        wrapper.className = "nonstandard-wrapper";
+        wrapper.appendChild(toggle);
+        wrapper.appendChild(nonStdList);
+
+        container.appendChild(wrapper);
       }
+
+      standardButtons.forEach(btn => container.appendChild(btn));
+    }
+
+    function closeNonStandardList() {
+      if (currentNonStandardList) currentNonStandardList.classList.remove("open");
+      if (currentNonStandardToggle) currentNonStandardToggle.classList.remove("active");
+      currentNonStandardList = null;
+      currentNonStandardToggle = null;
+    }
+
+    function showNonStandardToast() {
+      const toast = document.getElementById("nonstandardToast");
+      if (!toast) return;
+      toast.classList.add("show");
+
+      if (nonStandardToastTimer) clearTimeout(nonStandardToastTimer);
+      nonStandardToastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 3000);
     }
 
     function renderNotes() {
@@ -712,6 +796,13 @@
       });
 
       document.getElementById("clearProtocol").addEventListener("click", clearProtocolSelection);
+
+      document.addEventListener("click", (event) => {
+        if (!currentNonStandardList) return;
+        const isToggle = currentNonStandardToggle && currentNonStandardToggle.contains(event.target);
+        const isList = currentNonStandardList && currentNonStandardList.contains(event.target);
+        if (!isToggle && !isList) closeNonStandardList();
+      });
 
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored && protocolIndex.has(stored)) {
