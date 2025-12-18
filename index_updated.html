@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DoseCalc</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #111827;
+      color: #f9fafb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 18px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 1100px;
+    }
+
+    h1 {
+      text-align: center;
+      margin: 0 0 10px 0;
+      font-size: 1.8rem;
+    }
+    h2 {
+      text-align: center;
+      margin: 0 0 22px 0;
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: #e5e7eb;
+    }
+
+    /* 3-column layout: protocols | calculator | notes */
+    .layout {
+      display: grid;
+      grid-template-columns: 240px minmax(320px, 480px) 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: #1f2937;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: relative;
+      overflow: hidden;
+      transition: width 180ms ease, padding 180ms ease;
+    }
+    @media (min-width: 981px) {
+      .sidebar.collapsed {
+        width: 56px;
+        padding: 12px;
+      }
+      .sidebar.collapsed .sidebar-title,
+      .sidebar.collapsed .sidebar-content,
+      .sidebar.collapsed .sidebar-footer {
+        display: none;
+      }
+      .sidebar.collapsed .sidebar-toggle {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+      }
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .sidebar-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #f9fafb;
+    }
+    .sidebar-toggle {
+      border: 1px solid #374151;
+      background: #111827;
+      color: #f9fafb;
+      border-radius: 10px;
+      padding: 6px 10px;
+      cursor: pointer;
+      line-height: 1;
+    }
+    .sidebar-toggle:hover { border-color: #60a5fa; }
+
+    .proto-details {
+      border: 1px solid #374151;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #111827;
+      margin-bottom: 10px;
+    }
+    .proto-details summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+    }
+    .proto-details summary::-webkit-details-marker { display: none; }
+    .proto-details summary .chev { opacity: 0.85; }
+
+    .proto-list {
+      padding: 8px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .proto-item {
+      width: 100%;
+      text-align: left;
+      border: 1px solid #374151;
+      background: #1f2937;
+      color: #f9fafb;
+      border-radius: 12px;
+      padding: 10px 10px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      line-height: 1.1;
+    }
+    .proto-item:hover { border-color: #60a5fa; }
+    .proto-item.active {
+      border-color: #60a5fa;
+      background: rgba(96,165,250,0.14);
+    }
+    .proto-item .proto-name { font-weight: 700; display: block; margin-bottom: 4px; }
+    .proto-item .proto-sub { font-size: 0.78rem; color: #cbd5e1; }
+
+    .sidebar-footer {
+      margin-top: 12px;
+      border-top: 1px solid #374151;
+      padding-top: 12px;
+      display: grid;
+      gap: 10px;
+    }
+    .small {
+      font-size: 0.78rem;
+      color: #cbd5e1;
+      line-height: 1.25;
+    }
+    .link-button {
+      width: 100%;
+      border: 1px solid #374151;
+      background: #111827;
+      color: #f9fafb;
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 650;
+    }
+    .link-button:hover { border-color: #60a5fa; }
+
+    /* Calculator */
+    .card {
+      background: #1f2937;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 16px;
+    }
+    .field label {
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+      color: #e5e7eb;
+    }
+    .field input {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #374151;
+      background: #111827;
+      color: #f9fafb;
+      outline: none;
+    }
+    .field input:focus { border-color: #60a5fa; }
+
+    .buttons-row {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .pill-button {
+      border: none;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.8rem;
+      background: #4b5563;
+      color: #f9fafb;
+      cursor: pointer;
+      user-select: none;
+    }
+    .pill-button:hover { background: #6b7280; }
+
+    .output {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #374151;
+    }
+    .output-title {
+      font-size: 0.95rem;
+      margin: 0 0 4px 0;
+      color: #e5e7eb;
+    }
+    .output-value {
+      margin: 0;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #f9fafb;
+      word-break: break-word;
+    }
+
+    /* Notes panel */
+    .notes h3 {
+      margin: 0 0 10px 0;
+      font-size: 1.05rem;
+    }
+    .notes .notes-meta {
+      font-size: 0.85rem;
+      color: #cbd5e1;
+      margin-bottom: 10px;
+    }
+    .notes .notes-body {
+      background: #111827;
+      border: 1px solid #374151;
+      border-radius: 12px;
+      padding: 12px;
+      color: #e5e7eb;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      min-height: 160px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Reconstituted Vial Dose Calculator</h1>
+    <h2>A free tool for converting reconstituted vial doses into precise syringe units and mL values.</h2>
+
+    <div class="layout">
+      <!-- LEFT: Protocols menu -->
+      <div class="panel sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-title">Protocols</div>
+          <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Toggle protocols sidebar">⟨⟩</button>
+        </div>
+
+        <div class="sidebar-content" id="protocolList">
+          <!-- populated by JS -->
+        </div>
+
+        <div class="sidebar-footer">
+          <button class="link-button" id="clearProtocol" type="button">Use default preset doses</button>
+          <div class="small" id="protocolSource"></div>
+          <div class="small">
+            Tip: to override these, add a <code>dose-protocols.json</code> file next to this HTML file.
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER: Calculator -->
+      <div class="card" id="calculatorCard">
+        <!-- Vial Contents -->
+        <div class="field">
+          <label for="vialContents">Vial Contents (mg)</label>
+          <input id="vialContents" type="text" autocomplete="off" />
+        </div>
+
+        <!-- Reconstitution Volume -->
+        <div class="field">
+          <label for="reconVolume">Reconstitution Volume (mL)</label>
+          <input id="reconVolume" type="text" autocomplete="off" />
+        </div>
+
+        <!-- Dose per mL -->
+        <div class="output">
+          <p class="output-title">Dose per mL</p>
+          <p class="output-value" id="dosePerMlDisplay">0.000 mg/mL</p>
+        </div>
+
+        <!-- Desired Dose -->
+        <div class="field">
+          <label for="desiredDose">Desired Dose (mg)</label>
+          <input id="desiredDose" type="text" autocomplete="off" />
+          <div class="buttons-row" id="presetButtons">
+            <!-- populated by JS -->
+          </div>
+        </div>
+
+        <!-- Required Units / Volume -->
+        <div class="output">
+          <p class="output-title">Required Units / Volume</p>
+          <p class="output-value" id="requiredUnitsDisplay">0 Units / 0.00 mL</p>
+        </div>
+      </div>
+
+      <!-- RIGHT: Protocol Notes -->
+      <div class="panel notes" id="notesPanel">
+        <h3 id="protocolTitle">No protocol selected</h3>
+        <div class="notes-meta" id="protocolSubtitle">Preset dose buttons use the built-in defaults.</div>
+        <div class="notes-body" id="protocolNotes">Pick a protocol from the left to load its preset dose buttons and show its notes here.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /*******************************************************************
+     * Protocol JSON
+     * - If /dose-protocols.json exists, it will be used.
+     * - Otherwise the BUILTIN_PROTOCOL_LIBRARY below is used.
+     *
+     * Expected shape:
+     * {
+     *   "schemaVersion": 1,
+     *   "sections": [
+     *     {
+     *       "name": "Section name",
+     *       "protocols": [
+     *         {
+     *           "id": "unique-id",
+     *           "name": "Protocol name",
+     *           "notes": "string or array of strings",
+     *           "doses": [
+     *             { "label": "0.33 mg", "dose": "0.33" },
+     *             { "label": "1 mg", "dose": "1" }
+     *           ]
+     *         }
+     *       ]
+     *     }
+     *   ]
+     * }
+     *******************************************************************/
+    const BUILTIN_PROTOCOL_LIBRARY = {
+      schemaVersion: 1,
+      title: "Built-ins",
+      sections: [
+        {
+          name: "GLP1 agonists",
+          protocols: [
+            {
+              id: "sema",
+              name: "Semaglutide",
+              notes: [
+                "DEMO ONLY. Replace this with your own dose-protocols.json.",
+                "These are just example preset buttons to prove the UI wiring works."
+              ],
+              doses: [
+                { label: "0.1 mg", dose: "0.1", note: "Micro-Dose Starter" },
+                { label: "0.25 mg", dose: "0.25" note: "Typical Clinical Starting Dose" },
+				{ label: "0.5 mg", dose: "0.5" },
+                { label: "1 mg", dose: "1" },
+                { label: "1.7 mg", dose: "1.7" },
+				{ label: "2.4 mg", dose: "2.4", note: "Typical Clinical Max Dose (maintinance)" }
+              ]
+            },
+            {
+              id: "zep",
+              name: "Tirzepatide",
+              notes: "DEMO ONLY. Uses a different set of preset dose buttons.",
+              doses: [
+                { label: "0.33 mg", dose: "0.33", note: " },
+                { label: "0.67 mg", dose: "0.67" },
+                { label: "0.50 mg", dose: "0.5" },
+                { label: "0.75 mg", dose: "0.75" },
+                { label: "1.00 mg", dose: "1" }
+              ]
+            },
+			{
+              id: "reta",
+              name: "Retatrutide",
+              notes: [
+                "DEMO ONLY. Replace this with your own dose-protocols.json.",
+                "These are just example preset buttons to prove the UI wiring works."
+              ],
+              doses: [
+                { label: "1 mg", dose: "1", note: "micro starter dose"},
+                { label: "2 mg", dose: "2" },
+				{ label: "4 mg", dose: "4" },
+                { label: "8 mg", dose: "8" },
+                { label: "12 mg", dose: "12" }
+              ]
+            },
+			{
+              id: "cagri",
+              name: "Cagrilintide",
+              notes: [
+                "DEMO ONLY. Replace this with your own dose-protocols.json.",
+                "These are just example preset buttons to prove the UI wiring works."
+              ],
+              doses: [
+                { label: "0.1 mg", dose: "0.1", note: "micro starter dose"},
+                { label: "0.25 mg", dose: "0.25" },
+				{ label: "0.5 mg", dose: "0.5" },
+                { label: "1 mg", dose: "1" },
+                { label: "2 mg", dose: "2" }
+              ]
+            },
+			{
+              id: "lira",
+              name: "Liraglutide",
+              notes: [
+                "DEMO ONLY. Replace this with your own dose-protocols.json.",
+                "These are just example preset buttons to prove the UI wiring works."
+              ],
+              doses: [
+                { label: "0.6 mg", dose: "0.6", note: "Typical Clinical Starting Dose" },
+                { label: "1.2 mg", dose: "1.2" },
+				{ label: "1.8 mg", dose: "1.8" },
+                { label: "2.4 mg", dose: "2.4" },
+                { label: "3 mg", dose: "3" note:"Typical Clinical Max Dose (maintinance)" }
+              ]
+            },
+			{
+              id: "maz",
+              name: "Mazduutide",
+              notes: [
+                "DEMO ONLY. Replace this with your own dose-protocols.json.",
+                "These are just example preset buttons to prove the UI wiring works."
+              ],
+              doses: [
+                { label: "0.1 mg", dose: "0.1", note: "micro starter dose"},
+                { label: "0.25 mg", dose: "0.25" },
+				{ label: "0.5 mg", dose: "0.5" },
+                { label: "1 mg", dose: "1" },
+                { label: "2 mg", dose: "2" }
+              ]
+            },
+          ]
+        },
+        {
+          name: "Mitochondrial Peptides",
+          protocols: [
+            {
+              id: "motsc",
+              name: "MOTS-C",
+              notes: [
+                "DEMO ONLY.",
+                "You can include multiple note lines; they render with line breaks."
+              ],
+              doses: [
+                { label: "0.05 mg", dose: "0.05" },
+                { label: "0.10 mg", dose: "0.10" },
+                { label: "0.15 mg", dose: "0.15" },
+                { label: "0.20 mg", dose: "0.20" }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+
+    const DEFAULT_PRESET_DOSES = [
+      { label: "0.25 mg", dose: "0.25" },
+      { label: "0.5 mg", dose: "0.5" },
+      { label: "1 mg", dose: "1" },
+      { label: "2.5 mg", dose: "2.5" }
+    ];
+
+    const STORAGE_KEY = "dosecalc.selectedProtocolId";
+
+    let protocolLibrary = null;
+    let protocolIndex = new Map(); // id -> protocol
+    let selectedProtocolId = null;
+
+    function parseWithFractions(raw) {
+      if (typeof raw !== "string") return 0;
+      const trimmed = raw.trim();
+      if (!trimmed) return 0;
+
+      const numeric = parseFloat(trimmed);
+      if (isNaN(numeric)) return 0;
+
+      const integerPart = Math.floor(numeric);
+
+      // Normalize common third inputs:
+      //   ".33" => 1/3
+      //   ".66/.67" => 2/3
+      if (trimmed.includes(".33")) {
+        return integerPart + 1 / 3;
+      }
+      if (trimmed.includes(".66") || trimmed.includes(".67")) {
+        return integerPart + 2 / 3;
+      }
+
+      return numeric;
+    }
+
+    function recalc() {
+      const vialStr = document.getElementById("vialContents").value;
+      const reconStr = document.getElementById("reconVolume").value;
+      const desiredStr = document.getElementById("desiredDose").value;
+
+      const vialContentMg = parseWithFractions(vialStr);
+      const reconVolumeMl = parseWithFractions(reconStr);
+      const desiredDoseMg = parseWithFractions(desiredStr);
+
+      let dosePerMl = 0;
+      if (reconVolumeMl > 0) {
+        dosePerMl = vialContentMg / reconVolumeMl;
+      }
+
+      let requiredVolumeMl = 0;
+      if (dosePerMl > 0 && desiredDoseMg > 0) {
+        requiredVolumeMl = desiredDoseMg / dosePerMl;
+      }
+
+      // Display dose per mL
+      const dosePerMlDisplay = document.getElementById("dosePerMlDisplay");
+      if (dosePerMl > 0 && isFinite(dosePerMl)) {
+        dosePerMlDisplay.textContent = dosePerMl.toFixed(3) + " mg/mL";
+      } else {
+        dosePerMlDisplay.textContent = "0.000 mg/mL";
+      }
+
+      // Display required units / volume (1 mL = 100 Units on insulin syringe)
+      const requiredUnitsDisplay = document.getElementById("requiredUnitsDisplay");
+      if (requiredVolumeMl > 0 && isFinite(requiredVolumeMl)) {
+        const units = Math.round(requiredVolumeMl * 100);
+        const volStr = requiredVolumeMl.toFixed(2);
+        requiredUnitsDisplay.textContent = units + " Units / " + volStr + " mL";
+      } else {
+        requiredUnitsDisplay.textContent = "0 Units / 0.00 mL";
+      }
+    }
+
+    function safeText(v) {
+      return (v === undefined || v === null) ? "" : String(v);
+    }
+
+    function normalizeLibrary(lib) {
+      // Accept either {sections:[...]} or {protocols:[...]} (flattened)
+      if (!lib || typeof lib !== "object") return { schemaVersion: 1, sections: [] };
+
+      let sections = [];
+      if (Array.isArray(lib.sections)) {
+        sections = lib.sections;
+      } else if (Array.isArray(lib.protocols)) {
+        sections = [{ name: safeText(lib.title || "Protocols"), protocols: lib.protocols }];
+      } else {
+        sections = [];
+      }
+
+      // Normalize protocols + build ids if missing
+      const normalizedSections = sections.map((s, sIdx) => {
+        const name = safeText(s.name || `Section ${sIdx + 1}`);
+        const protos = Array.isArray(s.protocols) ? s.protocols : [];
+        const normalizedProtos = protos
+          .filter(p => p && typeof p === "object")
+          .map((p, pIdx) => {
+            const id = safeText(p.id || `${name.toLowerCase().replace(/\s+/g, "-")}-${pIdx + 1}`);
+            const proto = {
+              id,
+              name: safeText(p.name || id),
+              notes: p.notes,
+              doses: Array.isArray(p.doses) ? p.doses : []
+            };
+            return proto;
+          });
+        return { name, protocols: normalizedProtos };
+      });
+
+      return {
+        schemaVersion: lib.schemaVersion || 1,
+        title: lib.title,
+        sections: normalizedSections
+      };
+    }
+
+    async function loadProtocolLibrary() {
+      // Try external JSON first
+      const sourceEl = document.getElementById("protocolSource");
+      try {
+        const res = await fetch("./dose-protocols.json", { cache: "no-store" });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const json = await res.json();
+        sourceEl.textContent = "Loaded protocols from dose-protocols.json";
+        return { library: normalizeLibrary(json), source: "external" };
+      } catch (e) {
+        sourceEl.textContent = "Using built-in example protocols (dose-protocols.json not found)";
+        return { library: normalizeLibrary(BUILTIN_PROTOCOL_LIBRARY), source: "builtin" };
+      }
+    }
+
+    function buildIndex(lib) {
+      protocolIndex = new Map();
+      lib.sections.forEach(section => {
+        section.protocols.forEach(proto => {
+          protocolIndex.set(proto.id, proto);
+        });
+      });
+    }
+
+    function renderProtocolList(lib) {
+      const container = document.getElementById("protocolList");
+      container.innerHTML = "";
+
+      if (!lib.sections.length) {
+        container.innerHTML = '<div class="small">No protocols found.</div>';
+        return;
+      }
+
+      lib.sections.forEach((section) => {
+        const details = document.createElement("details");
+        details.className = "proto-details";
+        details.open = true;
+
+        const summary = document.createElement("summary");
+        summary.innerHTML = '<span>' + escapeHtml(section.name) + '</span><span class="chev">▾</span>';
+
+        const list = document.createElement("div");
+        list.className = "proto-list";
+
+        section.protocols.forEach((proto) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "proto-item";
+          btn.setAttribute("data-proto-id", proto.id);
+
+          const sub = (proto.doses && proto.doses.length) ? `${proto.doses.length} preset dose button(s)` : "No preset doses";
+          btn.innerHTML = '<span class="proto-name">' + escapeHtml(proto.name) + '</span>'
+                        + '<span class="proto-sub">' + escapeHtml(sub) + '</span>';
+
+          btn.addEventListener("click", () => selectProtocol(proto.id));
+          list.appendChild(btn);
+        });
+
+        details.appendChild(summary);
+        details.appendChild(list);
+        container.appendChild(details);
+      });
+
+      syncProtocolActiveStyles();
+    }
+
+    function escapeHtml(str) {
+      return safeText(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function syncProtocolActiveStyles() {
+      const items = document.querySelectorAll(".proto-item[data-proto-id]");
+      items.forEach(el => {
+        const id = el.getAttribute("data-proto-id");
+        if (id && id === selectedProtocolId) el.classList.add("active");
+        else el.classList.remove("active");
+      });
+    }
+
+    function notesToText(notes) {
+      if (Array.isArray(notes)) return notes.map(safeText).filter(Boolean).join("\n\n");
+      return safeText(notes);
+    }
+
+    function resolvePresetDoses() {
+      const proto = selectedProtocolId ? protocolIndex.get(selectedProtocolId) : null;
+      if (proto && Array.isArray(proto.doses) && proto.doses.length) return proto.doses;
+      return DEFAULT_PRESET_DOSES;
+    }
+
+    function renderPresetButtons(doses) {
+      const container = document.getElementById("presetButtons");
+      container.innerHTML = "";
+
+      doses.forEach((d) => {
+        const label = safeText(d.label || (d.dose !== undefined ? d.dose + " mg" : ""));
+        const doseStr = safeText(d.dose !== undefined ? d.dose : "");
+
+        const btn = document.createElement("button");
+        btn.className = "pill-button";
+        btn.type = "button";
+        btn.textContent = label || doseStr;
+
+        btn.addEventListener("click", () => {
+          const desiredInput = document.getElementById("desiredDose");
+          desiredInput.value = doseStr;
+          recalc();
+        });
+
+        container.appendChild(btn);
+      });
+    }
+
+    function renderNotes() {
+      const titleEl = document.getElementById("protocolTitle");
+      const subtitleEl = document.getElementById("protocolSubtitle");
+      const notesEl = document.getElementById("protocolNotes");
+
+      const proto = selectedProtocolId ? protocolIndex.get(selectedProtocolId) : null;
+      if (!proto) {
+        titleEl.textContent = "No protocol selected";
+        subtitleEl.textContent = "Preset dose buttons use the built-in defaults.";
+        notesEl.textContent = "Pick a protocol from the left to load its preset dose buttons and show its notes here.";
+        return;
+      }
+
+      titleEl.textContent = proto.name || proto.id;
+      subtitleEl.textContent = "Preset dose buttons loaded from the selected protocol.";
+      const notesText = notesToText(proto.notes) || "No notes provided for this protocol.";
+      notesEl.textContent = notesText;
+    }
+
+    function selectProtocol(protoId) {
+      if (!protoId || !protocolIndex.has(protoId)) return;
+      selectedProtocolId = protoId;
+      localStorage.setItem(STORAGE_KEY, protoId);
+      syncProtocolActiveStyles();
+      renderNotes();
+      renderPresetButtons(resolvePresetDoses());
+      recalc();
+    }
+
+    function clearProtocolSelection() {
+      selectedProtocolId = null;
+      localStorage.removeItem(STORAGE_KEY);
+      syncProtocolActiveStyles();
+      renderNotes();
+      renderPresetButtons(resolvePresetDoses());
+      recalc();
+    }
+
+    function initSidebarToggle() {
+      const sidebar = document.getElementById("sidebar");
+      const toggleBtn = document.getElementById("sidebarToggle");
+
+      // Only collapse on wide screens (since small screens are already stacked)
+      toggleBtn.addEventListener("click", () => {
+        if (window.matchMedia("(min-width: 981px)").matches) {
+          sidebar.classList.toggle("collapsed");
+        }
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", async function () {
+      const inputs = [
+        document.getElementById("vialContents"),
+        document.getElementById("reconVolume"),
+        document.getElementById("desiredDose"),
+      ];
+      inputs.forEach(function (input) {
+        input.addEventListener("input", recalc);
+      });
+
+      initSidebarToggle();
+
+      const loaded = await loadProtocolLibrary();
+      protocolLibrary = loaded.library;
+      buildIndex(protocolLibrary);
+      renderProtocolList(protocolLibrary);
+
+      document.getElementById("clearProtocol").addEventListener("click", clearProtocolSelection);
+
+      // Restore previous selection if it still exists
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored && protocolIndex.has(stored)) {
+        selectedProtocolId = stored;
+      } else {
+        selectedProtocolId = null;
+      }
+
+      renderNotes();
+      renderPresetButtons(resolvePresetDoses());
+      recalc();
+    });
+  </script>
+</body>
+</html>
