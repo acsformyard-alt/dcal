@@ -179,6 +179,63 @@
       white-space: pre-wrap;
       min-height: 160px;
     }
+
+    /* Non-standard warning */
+    .warning-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 5;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 120ms ease, visibility 120ms ease;
+    }
+
+    .warning-overlay.open { visibility: visible; opacity: 1; }
+
+    .warning-bubble {
+      background: #111827;
+      border: 1px solid #b91c1c;
+      border-radius: 16px;
+      max-width: 520px;
+      width: min(520px, 100%);
+      padding: 18px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      position: relative;
+      color: #fef2f2;
+    }
+
+    .warning-bubble h4 {
+      margin: 0 0 8px 0;
+      font-size: 1.05rem;
+      color: #fecdd3;
+    }
+
+    .warning-bubble p { margin: 0 0 12px 0; line-height: 1.4; }
+
+    .warning-actions {
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .warning-close {
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .nonstandard-list { display: none; flex-wrap: wrap; gap: 8px; width: 100%; margin-top: 6px; }
+    .nonstandard-list.open { display: flex; }
+    .nonstandard-toggle { background: #b45309; color: #0b1220; font-weight: 800; }
+    .nonstandard-toggle:hover { background: #d97706; }
   </style>
 </head>
 <body>
@@ -237,12 +294,22 @@
     </div>
   </div>
 
+  <div class="warning-overlay" id="nonStandardWarning" role="alertdialog" aria-modal="true" aria-labelledby="warningTitle">
+    <div class="warning-bubble">
+      <h4 id="warningTitle">Non-Standard Protocol Selected</h4>
+      <p id="warningMessage">Placeholder, 12345</p>
+      <div class="warning-actions">
+        <button type="button" class="warning-close" id="acknowledgeWarning">I Understand</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const DEFAULT_PRESET_DOSES = [
-      { label: "0.25 mg", dose: "0.25" },
-      { label: "0.5 mg", dose: "0.5" },
-      { label: "1 mg", dose: "1" },
-      { label: "2.5 mg", dose: "2.5" }
+      { label: "0.25 mg", dose: "0.25", standard: 1 },
+      { label: "0.5 mg", dose: "0.5", standard: 1 },
+      { label: "1 mg", dose: "1", standard: 1 },
+      { label: "2.5 mg", dose: "2.5", standard: 1 }
     ];
 
     const STORAGE_KEY = "dosecalc.selectedProtocolId";
@@ -251,6 +318,16 @@
     let protocolIndex = new Map();
     let selectedProtocolId = null;
     let selectedDoseNote = null;
+
+    function showNonStandardWarning() {
+      const overlay = document.getElementById("nonStandardWarning");
+      if (overlay) overlay.classList.add("open");
+    }
+
+    function hideNonStandardWarning() {
+      const overlay = document.getElementById("nonStandardWarning");
+      if (overlay) overlay.classList.remove("open");
+    }
 
     function parseWithFractions(raw) {
       if (typeof raw !== "string") return 0;
@@ -404,14 +481,16 @@
               .map(d => ({
                 label: safeText(d.button || d.label || `${d.dose} mg`),
                 dose: safeText(d.dose),
-                note: safeText(d.doseNotes)
+                note: safeText(d.doseNotes),
+                standard: numericValue(d.standard, 1)
               }));
 
             return {
               id: safeText(it.itemId || it.itemName),
               name: safeText(it.itemName || it.itemId),
               notes: safeText(it.notes),
-              doses: doseList
+              doses: doseList,
+              standard: numericValue(it.standard, 1)
             };
           });
 
@@ -501,7 +580,10 @@
       const container = document.getElementById("presetButtons");
       container.innerHTML = "";
 
-      doses.forEach((d, idx) => {
+      const standardButtons = [];
+      const nonStandardButtons = [];
+
+      const createDoseButton = (d, idx, kind) => {
         const label = safeText(d.label || (d.dose !== undefined ? d.dose + " mg" : ""));
         const doseStr = safeText(d.dose !== undefined ? d.dose : "");
         const doseNote = notesToText(d.note);
@@ -510,7 +592,7 @@
         btn.className = "pill-button";
         btn.type = "button";
         btn.textContent = label || doseStr;
-        btn.dataset.doseKey = `dose-${idx}-${doseStr}`;
+        btn.dataset.doseKey = `${kind}-${idx}-${doseStr}`;
 
         btn.addEventListener("click", () => {
           const desiredInput = document.getElementById("desiredDose");
@@ -524,8 +606,37 @@
           recalc();
         });
 
-        container.appendChild(btn);
+        return btn;
+      };
+
+      doses.forEach((d, idx) => {
+        if (numericValue(d.standard, 1) === 0) {
+          nonStandardButtons.push(createDoseButton(d, idx, "nonstandard"));
+        } else {
+          standardButtons.push(createDoseButton(d, idx, "standard"));
+        }
       });
+
+      standardButtons.forEach(btn => container.appendChild(btn));
+
+      if (nonStandardButtons.length) {
+        const toggle = document.createElement("button");
+        toggle.className = "pill-button nonstandard-toggle";
+        toggle.type = "button";
+        toggle.textContent = "Non-Standard";
+
+        const nonStdList = document.createElement("div");
+        nonStdList.className = "nonstandard-list";
+        nonStandardButtons.forEach(btn => nonStdList.appendChild(btn));
+
+        toggle.addEventListener("click", () => {
+          const isOpen = nonStdList.classList.toggle("open");
+          toggle.classList.toggle("active", isOpen);
+        });
+
+        container.appendChild(toggle);
+        container.appendChild(nonStdList);
+      }
     }
 
     function renderNotes() {
@@ -554,6 +665,7 @@
 
     function selectProtocol(protoId) {
       if (!protoId || !protocolIndex.has(protoId)) return;
+      const proto = protocolIndex.get(protoId);
       selectedProtocolId = protoId;
       selectedDoseNote = null;
       localStorage.setItem(STORAGE_KEY, protoId);
@@ -561,6 +673,9 @@
       renderNotes();
       renderPresetButtons(resolvePresetDoses());
       recalc();
+
+      if (numericValue(proto.standard, 1) === 0) showNonStandardWarning();
+      else hideNonStandardWarning();
     }
 
     function clearProtocolSelection() {
@@ -571,6 +686,7 @@
       renderNotes();
       renderPresetButtons(resolvePresetDoses());
       recalc();
+      hideNonStandardWarning();
     }
 
     document.addEventListener("DOMContentLoaded", async function () {
@@ -580,6 +696,9 @@
         document.getElementById("desiredDose"),
       ];
       inputs.forEach(function (input) { input.addEventListener("input", recalc); });
+
+      const warningAck = document.getElementById("acknowledgeWarning");
+      if (warningAck) warningAck.addEventListener("click", hideNonStandardWarning);
 
       const loaded = await loadProtocolLibrary();
       protocolLibrary = loaded.library;
@@ -596,15 +715,16 @@
 
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored && protocolIndex.has(stored)) {
-        selectedProtocolId = stored;
+        selectProtocol(stored);
       } else {
         selectedProtocolId = null;
+        selectedDoseNote = null;
+        hideNonStandardWarning();
+        syncProtocolActiveStyles();
+        renderNotes();
+        renderPresetButtons(resolvePresetDoses());
+        recalc();
       }
-
-      syncProtocolActiveStyles();
-      renderNotes();
-      renderPresetButtons(resolvePresetDoses());
-      recalc();
     });
   </script>
 </body>
