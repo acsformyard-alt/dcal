@@ -57,6 +57,9 @@
       display: grid;
       gap: 10px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+      position: sticky;
+      top: 0;
+      z-index: 2;
     }
     .selector-label {
       font-size: 0.9rem;
@@ -102,11 +105,25 @@
       display: grid;
       grid-template-columns: 1fr;
       gap: 12px;
+      grid-template-areas:
+        "notes"
+        "calc";
     }
-    @media (min-width: 980px) {
+    #calculatorCard { grid-area: calc; }
+    #notesPanel { grid-area: notes; }
+
+    @media (orientation: landscape) and (min-width: 640px) {
       .layout {
-        grid-template-columns: 260px minmax(320px, 480px) 1fr;
+        grid-template-columns: minmax(320px, 1.3fr) minmax(280px, 0.9fr);
+        grid-template-areas: "calc notes";
         align-items: start;
+      }
+    }
+
+    @media (min-width: 1000px) {
+      .layout {
+        grid-template-columns: minmax(380px, 1.4fr) minmax(320px, 1fr);
+        grid-template-areas: "calc notes";
       }
     }
 
@@ -118,86 +135,10 @@
       box-shadow: 0 10px 30px rgba(0,0,0,0.45);
     }
 
-    /* Sidebar */
-    .sidebar { position: relative; overflow: hidden; }
-    .sidebar-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-    .sidebar-title { font-size: 0.95rem; font-weight: 700; color: var(--text); }
-    .sidebar-toggle {
-      border: 1px solid var(--border);
-      background: #0f172a;
-      color: var(--text);
-      border-radius: 10px;
-      padding: 6px 10px;
-      cursor: pointer;
-      line-height: 1;
-    }
-    .sidebar-toggle:hover { border-color: var(--accent); }
-    @media (min-width: 981px) {
-      .sidebar.collapsed { width: 56px; padding: 12px; }
-      .sidebar.collapsed .sidebar-title,
-      .sidebar.collapsed .sidebar-content,
-      .sidebar.collapsed .sidebar-footer { display: none; }
-      .sidebar.collapsed .sidebar-toggle { position: absolute; top: 10px; left: 10px; }
-    }
-
-    .proto-details {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      background: #0f172a;
-      margin-bottom: 10px;
-    }
-    .proto-details summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 10px 12px;
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: #e5e7eb;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      user-select: none;
-    }
-    .proto-details summary::-webkit-details-marker { display: none; }
-    .proto-details summary .chev { opacity: 0.85; }
-
-    .proto-list {
-      padding: 8px;
-      display: grid;
-      gap: 8px;
-    }
-
-    .proto-item {
-      width: 100%;
-      text-align: left;
-      border: 1px solid var(--border);
-      background: #111827;
-      color: var(--text);
-      border-radius: 12px;
-      padding: 10px 10px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      line-height: 1.1;
-    }
-    .proto-item:hover { border-color: var(--accent); }
-    .proto-item.active { border-color: var(--accent); background: rgba(96,165,250,0.12); }
-    .proto-item .proto-name { font-weight: 700; display: block; margin-bottom: 4px; }
-    .proto-item .proto-sub { font-size: 0.8rem; color: #cbd5e1; }
-
-    .sidebar-footer {
-      margin-top: 12px;
-      border-top: 1px solid var(--border);
-      padding-top: 12px;
-      display: grid;
-      gap: 10px;
-    }
+    /* Dose buttons */
+    .pill-button { border: none; border-radius: 999px; padding: 8px 12px; font-size: 0.88rem; background: #4b5563; color: var(--text); cursor: pointer; user-select: none; }
+    .pill-button:hover { background: #6b7280; }
+    .pill-button.active { background: var(--accent); color: #0b1220; }
     .small { font-size: 0.82rem; color: #cbd5e1; line-height: 1.35; }
     .link-button {
       width: 100%;
@@ -220,8 +161,6 @@
     .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(96,165,250,0.2); }
 
     .buttons-row { margin-top: 2px; display: flex; flex-wrap: wrap; gap: 8px; }
-    .pill-button { border: none; border-radius: 999px; padding: 8px 12px; font-size: 0.88rem; background: #4b5563; color: var(--text); cursor: pointer; user-select: none; }
-    .pill-button:hover { background: #6b7280; }
 
     .output { margin-top: 10px; padding: 12px; border-radius: 12px; background: #1f2937; border: 1px solid var(--border); }
     .output-title { font-size: 0.95rem; margin: 0 0 4px 0; color: #e5e7eb; }
@@ -258,23 +197,7 @@
     </div>
 
     <div class="layout">
-      <!-- LEFT: Protocols menu -->
-      <div class="panel sidebar" id="sidebar">
-        <div class="sidebar-header">
-          <div class="sidebar-title">Protocols</div>
-          <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Toggle protocols sidebar">⟨⟩</button>
-        </div>
-
-        <div class="sidebar-content" id="protocolList">
-          <!-- populated by JS -->
-        </div>
-
-        <div class="sidebar-footer">
-          <div class="small">Tap a protocol to load its preset dose buttons. On mobile, the dropdown above mirrors these options.</div>
-        </div>
-      </div>
-
-      <!-- CENTER: Calculator -->
+      <!-- Calculator -->
       <div class="card" id="calculatorCard">
         <div class="field">
           <label for="vialContents">Vial Contents (mg)</label>
@@ -305,11 +228,11 @@
         </div>
       </div>
 
-      <!-- RIGHT: Protocol Notes -->
+      <!-- Protocol Notes -->
       <div class="panel notes" id="notesPanel">
         <h3 id="protocolTitle">No protocol selected</h3>
         <div class="notes-meta" id="protocolSubtitle">Preset dose buttons use the default presets.</div>
-        <div class="notes-body" id="protocolNotes">Pick a protocol from the dropdown or list to load its preset dose buttons and notes.</div>
+        <div class="notes-body" id="protocolNotes">Pick a protocol from the dropdown to load its preset dose buttons and notes.</div>
       </div>
     </div>
   </div>
@@ -327,6 +250,7 @@
     let protocolLibrary = null;
     let protocolIndex = new Map();
     let selectedProtocolId = null;
+    let selectedDoseNote = null;
 
     function parseWithFractions(raw) {
       if (typeof raw !== "string") return 0;
@@ -524,48 +448,6 @@
       });
     }
 
-    function renderProtocolList(lib) {
-      const container = document.getElementById("protocolList");
-      container.innerHTML = "";
-
-      if (!lib.sections.length) {
-        container.innerHTML = '<div class="small">No protocols found.</div>';
-        return;
-      }
-
-      lib.sections.forEach((section) => {
-        const details = document.createElement("details");
-        details.className = "proto-details";
-        details.open = true;
-
-        const summary = document.createElement("summary");
-        summary.innerHTML = '<span>' + escapeHtml(section.name) + '</span><span class="chev">▾</span>';
-
-        const list = document.createElement("div");
-        list.className = "proto-list";
-
-        section.protocols.forEach((proto) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "proto-item";
-          btn.setAttribute("data-proto-id", proto.id);
-
-          const sub = (proto.doses && proto.doses.length) ? `${proto.doses.length} preset dose button(s)` : "No preset doses";
-          btn.innerHTML = '<span class="proto-name">' + escapeHtml(proto.name) + '</span>'
-                        + '<span class="proto-sub">' + escapeHtml(sub) + '</span>';
-
-          btn.addEventListener("click", () => selectProtocol(proto.id));
-          list.appendChild(btn);
-        });
-
-        details.appendChild(summary);
-        details.appendChild(list);
-        container.appendChild(details);
-      });
-
-      syncProtocolActiveStyles();
-    }
-
     function renderProtocolDropdown(lib) {
       const select = document.getElementById("protocolSelect");
       const previous = select.value;
@@ -600,13 +482,6 @@
     }
 
     function syncProtocolActiveStyles() {
-      const items = document.querySelectorAll(".proto-item[data-proto-id]");
-      items.forEach(el => {
-        const id = el.getAttribute("data-proto-id");
-        if (id && id === selectedProtocolId) el.classList.add("active");
-        else el.classList.remove("active");
-      });
-
       const select = document.getElementById("protocolSelect");
       if (select) select.value = selectedProtocolId || "";
     }
@@ -626,18 +501,26 @@
       const container = document.getElementById("presetButtons");
       container.innerHTML = "";
 
-      doses.forEach((d) => {
+      doses.forEach((d, idx) => {
         const label = safeText(d.label || (d.dose !== undefined ? d.dose + " mg" : ""));
         const doseStr = safeText(d.dose !== undefined ? d.dose : "");
+        const doseNote = notesToText(d.note);
 
         const btn = document.createElement("button");
         btn.className = "pill-button";
         btn.type = "button";
         btn.textContent = label || doseStr;
+        btn.dataset.doseKey = `dose-${idx}-${doseStr}`;
 
         btn.addEventListener("click", () => {
           const desiredInput = document.getElementById("desiredDose");
           desiredInput.value = doseStr;
+          selectedDoseNote = doseNote;
+
+          container.querySelectorAll(".pill-button").forEach(el => el.classList.remove("active"));
+          btn.classList.add("active");
+
+          renderNotes();
           recalc();
         });
 
@@ -654,19 +537,25 @@
       if (!proto) {
         titleEl.textContent = "No protocol selected";
         subtitleEl.textContent = "Preset dose buttons use the default presets.";
-        notesEl.textContent = "Pick a protocol from the dropdown or list to load its preset dose buttons and notes.";
+        notesEl.textContent = "Pick a protocol from the dropdown to load its preset dose buttons and notes.";
         return;
       }
 
       titleEl.textContent = proto.name || proto.id;
       subtitleEl.textContent = "Preset dose buttons loaded from the selected protocol.";
-      const notesText = notesToText(proto.notes) || "No notes provided for this protocol.";
-      notesEl.textContent = notesText;
+
+      const itemNotes = notesToText(proto.notes) || "No notes provided for this protocol.";
+      const doseNotes = selectedDoseNote && notesToText(selectedDoseNote).trim()
+        ? notesToText(selectedDoseNote)
+        : "No dose note selected.";
+
+      notesEl.textContent = `${itemNotes}\n\nDose Notes:\n${doseNotes}`;
     }
 
     function selectProtocol(protoId) {
       if (!protoId || !protocolIndex.has(protoId)) return;
       selectedProtocolId = protoId;
+      selectedDoseNote = null;
       localStorage.setItem(STORAGE_KEY, protoId);
       syncProtocolActiveStyles();
       renderNotes();
@@ -676,22 +565,12 @@
 
     function clearProtocolSelection() {
       selectedProtocolId = null;
+      selectedDoseNote = null;
       localStorage.removeItem(STORAGE_KEY);
       syncProtocolActiveStyles();
       renderNotes();
       renderPresetButtons(resolvePresetDoses());
       recalc();
-    }
-
-    function initSidebarToggle() {
-      const sidebar = document.getElementById("sidebar");
-      const toggleBtn = document.getElementById("sidebarToggle");
-
-      toggleBtn.addEventListener("click", () => {
-        if (window.matchMedia("(min-width: 981px)").matches) {
-          sidebar.classList.toggle("collapsed");
-        }
-      });
     }
 
     document.addEventListener("DOMContentLoaded", async function () {
@@ -702,12 +581,9 @@
       ];
       inputs.forEach(function (input) { input.addEventListener("input", recalc); });
 
-      initSidebarToggle();
-
       const loaded = await loadProtocolLibrary();
       protocolLibrary = loaded.library;
       buildIndex(protocolLibrary);
-      renderProtocolList(protocolLibrary);
       renderProtocolDropdown(protocolLibrary);
 
       document.getElementById("protocolSelect").addEventListener("change", (event) => {
