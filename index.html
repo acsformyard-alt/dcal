@@ -5,260 +5,314 @@
   <title>DoseCalc</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
+    :root {
+      --bg: #0b1220;
+      --panel: #111827;
+      --muted: #9ca3af;
+      --border: #1f2937;
+      --accent: #60a5fa;
+      --text: #f9fafb;
+    }
+
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
+
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #111827;
-      color: #f9fafb;
+      background: radial-gradient(circle at 20% 20%, rgba(96,165,250,0.08), transparent 35%),
+                  radial-gradient(circle at 80% 0%, rgba(34,197,94,0.07), transparent 30%),
+                  var(--bg);
+      color: var(--text);
       display: flex;
-      align-items: center;
       justify-content: center;
       min-height: 100vh;
-      padding: 18px;
+      padding: 16px;
     }
 
     .app {
       width: 100%;
-      max-width: 1100px;
+      max-width: 1120px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      flex: 1;
+      min-height: 0;
     }
 
     h1 {
       text-align: center;
-      margin: 0 0 10px 0;
-      font-size: 1.8rem;
+      margin: 0;
+      font-size: clamp(1.4rem, 4vw, 1.9rem);
     }
     h2 {
       text-align: center;
-      margin: 0 0 22px 0;
-      font-size: 1.05rem;
+      margin: 4px 0 12px 0;
+      font-size: clamp(0.95rem, 3vw, 1.1rem);
       font-weight: 500;
-      color: #e5e7eb;
+      color: #d1d5db;
     }
 
-    /* 3-column layout: protocols | calculator | notes */
+    .selector-bar {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .selector-label {
+      font-size: 0.9rem;
+      color: #e5e7eb;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .selector-label span {
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .selector-row {
+      display: grid;
+      grid-template-columns: 1fr 120px;
+      gap: 10px;
+    }
+    @media (max-width: 640px) {
+      .selector-row { grid-template-columns: 1fr; }
+    }
+    select,
+    .secondary-button {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #0f172a;
+      color: var(--text);
+      padding: 12px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+    select:focus,
+    .secondary-button:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(96,165,250,0.2); }
+    .secondary-button {
+      cursor: pointer;
+      font-weight: 650;
+      text-align: center;
+    }
+
     .layout {
       display: grid;
-      grid-template-columns: 240px minmax(320px, 480px) 1fr;
-      gap: 16px;
-      align-items: start;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      grid-template-areas:
+        "notes"
+        "calc";
+      min-height: 0;
+      flex: 1;
+    }
+    #calculatorCard { grid-area: calc; }
+    #notesPanel { grid-area: notes; }
+
+    @media (orientation: landscape) and (min-width: 640px) {
+      .layout {
+        grid-template-columns: minmax(320px, 1.3fr) minmax(280px, 0.9fr);
+        grid-template-areas: "calc notes";
+        align-items: stretch;
+        grid-auto-rows: 1fr;
+        height: calc(100vh - 200px);
+      }
+
+      #calculatorCard,
+      #notesPanel {
+        height: 100%;
+        min-height: 0;
+      }
+
+      #calculatorCard {
+        overflow: auto;
+      }
+
+      #notesPanel {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      #notesPanel .notes-body {
+        flex: 1;
+        overflow: auto;
+      }
     }
 
-    @media (max-width: 980px) {
+    @media (min-width: 1000px) {
       .layout {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(380px, 1.4fr) minmax(320px, 1fr);
+        grid-template-areas: "calc notes";
       }
     }
 
     .panel {
-      background: #1f2937;
+      background: var(--panel);
       border-radius: 16px;
       padding: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.45);
     }
 
-    /* Sidebar */
-    .sidebar {
-      position: relative;
-      overflow: hidden;
-      transition: width 180ms ease, padding 180ms ease;
-    }
-    @media (min-width: 981px) {
-      .sidebar.collapsed {
-        width: 56px;
-        padding: 12px;
-      }
-      .sidebar.collapsed .sidebar-title,
-      .sidebar.collapsed .sidebar-content,
-      .sidebar.collapsed .sidebar-footer {
-        display: none;
-      }
-      .sidebar.collapsed .sidebar-toggle {
-        position: absolute;
-        top: 10px;
-        left: 10px;
-      }
-    }
-
-    .sidebar-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-    .sidebar-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: #f9fafb;
-    }
-    .sidebar-toggle {
-      border: 1px solid #374151;
-      background: #111827;
-      color: #f9fafb;
-      border-radius: 10px;
-      padding: 6px 10px;
-      cursor: pointer;
-      line-height: 1;
-    }
-    .sidebar-toggle:hover { border-color: #60a5fa; }
-
-    .proto-details {
-      border: 1px solid #374151;
-      border-radius: 12px;
-      overflow: hidden;
-      background: #111827;
-      margin-bottom: 10px;
-    }
-    .proto-details summary {
-      list-style: none;
-      cursor: pointer;
-      padding: 10px 12px;
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: #e5e7eb;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      user-select: none;
-    }
-    .proto-details summary::-webkit-details-marker { display: none; }
-    .proto-details summary .chev { opacity: 0.85; }
-
-    .proto-list {
-      padding: 8px;
-      display: grid;
-      gap: 8px;
-    }
-
-    .proto-item {
-      width: 100%;
-      text-align: left;
-      border: 1px solid #374151;
-      background: #1f2937;
-      color: #f9fafb;
-      border-radius: 12px;
-      padding: 10px 10px;
-      cursor: pointer;
-      font-size: 0.88rem;
-      line-height: 1.1;
-    }
-    .proto-item:hover { border-color: #60a5fa; }
-    .proto-item.active {
-      border-color: #60a5fa;
-      background: rgba(96,165,250,0.14);
-    }
-    .proto-item .proto-name { font-weight: 700; display: block; margin-bottom: 4px; }
-    .proto-item .proto-sub { font-size: 0.78rem; color: #cbd5e1; }
-
-    .sidebar-footer {
-      margin-top: 12px;
-      border-top: 1px solid #374151;
-      padding-top: 12px;
-      display: grid;
-      gap: 10px;
-    }
-    .small {
-      font-size: 0.78rem;
-      color: #cbd5e1;
-      line-height: 1.25;
-    }
+    /* Dose buttons */
+    .pill-button { border: none; border-radius: 999px; padding: 8px 12px; font-size: 0.88rem; background: #4b5563; color: var(--text); cursor: pointer; user-select: none; }
+    .pill-button:hover { background: #6b7280; }
+    .pill-button.active { background: var(--accent); color: #0b1220; }
+    .small { font-size: 0.82rem; color: #cbd5e1; line-height: 1.35; }
     .link-button {
       width: 100%;
-      border: 1px solid #374151;
-      background: #111827;
-      color: #f9fafb;
+      border: 1px solid var(--border);
+      background: #0f172a;
+      color: var(--text);
       border-radius: 12px;
       padding: 10px 12px;
       cursor: pointer;
       font-size: 0.9rem;
       font-weight: 650;
     }
-    .link-button:hover { border-color: #60a5fa; }
+    .link-button:hover { border-color: var(--accent); }
 
     /* Calculator */
-    .card {
-      background: #1f2937;
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
-    .field {
-      display: flex;
-      flex-direction: column;
-      margin-bottom: 16px;
-    }
-    .field label {
-      font-size: 0.85rem;
-      margin-bottom: 4px;
-      color: #e5e7eb;
-    }
-    .field input {
-      padding: 8px 10px;
-      border-radius: 8px;
-      border: 1px solid #374151;
-      background: #111827;
-      color: #f9fafb;
-      outline: none;
-    }
-    .field input:focus { border-color: #60a5fa; }
+    .card { background: var(--panel); border-radius: 16px; padding: 18px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.45); }
+    .field { display: flex; flex-direction: column; margin-bottom: 14px; gap: 6px; }
+    .field label { font-size: 0.9rem; color: #e5e7eb; }
+    .field input { padding: 12px 12px; border-radius: 10px; border: 1px solid var(--border); background: #0f172a; color: var(--text); outline: none; font-size: 1rem; }
+    .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(96,165,250,0.2); }
 
-    .buttons-row {
-      margin-top: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .pill-button {
-      border: none;
-      border-radius: 999px;
-      padding: 6px 10px;
-      font-size: 0.8rem;
-      background: #4b5563;
-      color: #f9fafb;
-      cursor: pointer;
-      user-select: none;
-    }
-    .pill-button:hover { background: #6b7280; }
+    .buttons-row { margin-top: 2px; display: flex; flex-wrap: wrap; gap: 8px; }
 
-    .output {
-      margin-top: 12px;
-      padding: 12px;
-      border-radius: 12px;
-      background: #374151;
-    }
-    .output-title {
-      font-size: 0.95rem;
-      margin: 0 0 4px 0;
-      color: #e5e7eb;
-    }
-    .output-value {
-      margin: 0;
-      font-size: 1.4rem;
-      font-weight: 700;
-      color: #f9fafb;
-      word-break: break-word;
-    }
+    .output { margin-top: 10px; padding: 12px; border-radius: 12px; background: #1f2937; border: 1px solid var(--border); }
+    .output-title { font-size: 0.95rem; margin: 0 0 4px 0; color: #e5e7eb; }
+    .output-value { margin: 0; font-size: 1.4rem; font-weight: 700; color: var(--text); word-break: break-word; }
 
     /* Notes panel */
-    .notes h3 {
-      margin: 0 0 10px 0;
-      font-size: 1.05rem;
-    }
-    .notes .notes-meta {
-      font-size: 0.85rem;
-      color: #cbd5e1;
-      margin-bottom: 10px;
-    }
+    .notes h3 { margin: 0 0 8px 0; font-size: 1.05rem; }
+    .notes .notes-meta { font-size: 0.9rem; color: #cbd5e1; margin-bottom: 8px; }
     .notes .notes-body {
-      background: #111827;
-      border: 1px solid #374151;
+      background: #0f172a;
+      border: 1px solid var(--border);
       border-radius: 12px;
       padding: 12px;
       color: #e5e7eb;
       line-height: 1.35;
       white-space: pre-wrap;
       min-height: 160px;
+    }
+
+    /* Non-standard warning */
+    .warning-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 5;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 120ms ease, visibility 120ms ease;
+    }
+
+    .warning-overlay.open { visibility: visible; opacity: 1; }
+
+    .warning-bubble {
+      background: #111827;
+      border: 1px solid #b91c1c;
+      border-radius: 16px;
+      max-width: 520px;
+      width: min(520px, 100%);
+      padding: 18px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+      position: relative;
+      color: #fef2f2;
+      text-align: center;
+    }
+
+    .warning-bubble h4 {
+      margin: 0 0 8px 0;
+      font-size: 1.05rem;
+      color: #fecdd3;
+    }
+
+    .warning-bubble p { margin: 0 0 12px 0; line-height: 1.4; }
+
+    .warning-actions {
+      display: flex;
+      justify-content: center;
+    }
+
+    .warning-close {
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .nonstandard-wrapper { position: relative; width: auto; }
+    .nonstandard-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: max-content;
+      min-width: 240px;
+      position: absolute;
+      left: 0;
+      top: calc(100% + 6px);
+      padding: 8px;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-6px);
+      transition: max-height 200ms ease, opacity 180ms ease, transform 200ms ease;
+      z-index: 4;
+    }
+    .nonstandard-list.open {
+      max-height: 500px;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .nonstandard-toggle { background: #b45309; color: #0b1220; font-weight: 800; }
+    .nonstandard-toggle:hover { background: #d97706; }
+
+    .nonstandard-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translate(-50%, 12px);
+      background: rgba(17, 24, 39, 0.95);
+      border: 1px solid #b45309;
+      color: #fde68a;
+      padding: 10px 14px;
+      border-radius: 999px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 200ms ease, transform 200ms ease, visibility 200ms ease;
+      z-index: 6;
+      text-align: center;
+      font-weight: 650;
+    }
+    .nonstandard-toast.show {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, 0);
     }
   </style>
 </head>
@@ -267,230 +321,98 @@
     <h1>Reconstituted Vial Dose Calculator</h1>
     <h2>A free tool for converting reconstituted vial doses into precise syringe units and mL values.</h2>
 
-    <div class="layout">
-      <!-- LEFT: Protocols menu -->
-      <div class="panel sidebar" id="sidebar">
-        <div class="sidebar-header">
-          <div class="sidebar-title">Protocols</div>
-          <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Toggle protocols sidebar">⟨⟩</button>
-        </div>
-
-        <div class="sidebar-content" id="protocolList">
-          <!-- populated by JS -->
-        </div>
-
-        <div class="sidebar-footer">
-          <button class="link-button" id="clearProtocol" type="button">Use default preset doses</button>
-          <div class="small" id="protocolSource"></div>
-          <div class="small">
-            Tip: to override these, add a <code>dose-protocols.json</code> file next to this HTML file.
-          </div>
-        </div>
+    <div class="selector-bar">
+      <div class="selector-label">Protocol library <span id="protocolSource">Loading from CSV…</span></div>
+      <div class="selector-row">
+        <select id="protocolSelect" aria-label="Select a protocol">
+          <option value="">Default preset doses</option>
+        </select>
+        <button class="secondary-button" id="clearProtocol" type="button">Use default presets</button>
       </div>
+    </div>
 
-      <!-- CENTER: Calculator -->
+    <div class="layout">
+      <!-- Calculator -->
       <div class="card" id="calculatorCard">
-        <!-- Vial Contents -->
         <div class="field">
           <label for="vialContents">Vial Contents (mg)</label>
-          <input id="vialContents" type="text" autocomplete="off" />
+          <input id="vialContents" type="text" inputmode="decimal" autocomplete="off" />
         </div>
 
-        <!-- Reconstitution Volume -->
         <div class="field">
           <label for="reconVolume">Reconstitution Volume (mL)</label>
-          <input id="reconVolume" type="text" autocomplete="off" />
+          <input id="reconVolume" type="text" inputmode="decimal" autocomplete="off" />
         </div>
 
-        <!-- Dose per mL -->
         <div class="output">
           <p class="output-title">Dose per mL</p>
           <p class="output-value" id="dosePerMlDisplay">0.000 mg/mL</p>
         </div>
 
-        <!-- Desired Dose -->
         <div class="field">
           <label for="desiredDose">Desired Dose (mg)</label>
-          <input id="desiredDose" type="text" autocomplete="off" />
+          <input id="desiredDose" type="text" inputmode="decimal" autocomplete="off" />
           <div class="buttons-row" id="presetButtons">
             <!-- populated by JS -->
           </div>
         </div>
 
-        <!-- Required Units / Volume -->
         <div class="output">
           <p class="output-title">Required Units / Volume</p>
           <p class="output-value" id="requiredUnitsDisplay">0 Units / 0.00 mL</p>
         </div>
       </div>
 
-      <!-- RIGHT: Protocol Notes -->
+      <!-- Protocol Notes -->
       <div class="panel notes" id="notesPanel">
         <h3 id="protocolTitle">No protocol selected</h3>
-        <div class="notes-meta" id="protocolSubtitle">Preset dose buttons use the built-in defaults.</div>
-        <div class="notes-body" id="protocolNotes">Pick a protocol from the left to load its preset dose buttons and show its notes here.</div>
+        <div class="notes-meta" id="protocolSubtitle">Preset dose buttons use the default presets.</div>
+        <div class="notes-body" id="protocolNotes">Pick a protocol from the dropdown to load its preset dose buttons and notes.</div>
       </div>
     </div>
   </div>
 
-  <script>
-    /*******************************************************************
-     * Protocol JSON
-     * - If /dose-protocols.json exists, it will be used.
-     * - Otherwise the BUILTIN_PROTOCOL_LIBRARY below is used.
-     *
-     * Expected shape:
-     * {
-     *   "schemaVersion": 1,
-     *   "sections": [
-     *     {
-     *       "name": "Section name",
-     *       "protocols": [
-     *         {
-     *           "id": "unique-id",
-     *           "name": "Protocol name",
-     *           "notes": "string or array of strings",
-     *           "doses": [
-     *             { "label": "0.33 mg", "dose": "0.33" },
-     *             { "label": "1 mg", "dose": "1" }
-     *           ]
-     *         }
-     *       ]
-     *     }
-     *   ]
-     * }
-     *******************************************************************/
-    const BUILTIN_PROTOCOL_LIBRARY = {
-      schemaVersion: 1,
-      title: "Built-ins",
-      sections: [
-        {
-          name: "GLP1 agonists",
-          protocols: [
-            {
-              id: "sema",
-              name: "Semaglutide",
-              notes: [
-                "DEMO ONLY. Replace this with your own dose-protocols.json.",
-                "These are just example preset buttons to prove the UI wiring works."
-              ],
-              doses: [
-                { label: "0.1 mg", dose: "0.1", note: "Micro-Dose Starter" },
-                { label: "0.25 mg", dose: "0.25" note: "Typical Clinical Starting Dose" },
-				{ label: "0.5 mg", dose: "0.5" },
-                { label: "1 mg", dose: "1" },
-                { label: "1.7 mg", dose: "1.7" },
-				{ label: "2.4 mg", dose: "2.4", note: "Typical Clinical Max Dose (maintinance)" }
-              ]
-            },
-            {
-              id: "zep",
-              name: "Tirzepatide",
-              notes: "DEMO ONLY. Uses a different set of preset dose buttons.",
-              doses: [
-                { label: "0.33 mg", dose: "0.33", note: " },
-                { label: "0.67 mg", dose: "0.67" },
-                { label: "0.50 mg", dose: "0.5" },
-                { label: "0.75 mg", dose: "0.75" },
-                { label: "1.00 mg", dose: "1" }
-              ]
-            },
-			{
-              id: "reta",
-              name: "Retatrutide",
-              notes: [
-                "DEMO ONLY. Replace this with your own dose-protocols.json.",
-                "These are just example preset buttons to prove the UI wiring works."
-              ],
-              doses: [
-                { label: "1 mg", dose: "1", note: "micro starter dose"},
-                { label: "2 mg", dose: "2" },
-				{ label: "4 mg", dose: "4" },
-                { label: "8 mg", dose: "8" },
-                { label: "12 mg", dose: "12" }
-              ]
-            },
-			{
-              id: "cagri",
-              name: "Cagrilintide",
-              notes: [
-                "DEMO ONLY. Replace this with your own dose-protocols.json.",
-                "These are just example preset buttons to prove the UI wiring works."
-              ],
-              doses: [
-                { label: "0.1 mg", dose: "0.1", note: "micro starter dose"},
-                { label: "0.25 mg", dose: "0.25" },
-				{ label: "0.5 mg", dose: "0.5" },
-                { label: "1 mg", dose: "1" },
-                { label: "2 mg", dose: "2" }
-              ]
-            },
-			{
-              id: "lira",
-              name: "Liraglutide",
-              notes: [
-                "DEMO ONLY. Replace this with your own dose-protocols.json.",
-                "These are just example preset buttons to prove the UI wiring works."
-              ],
-              doses: [
-                { label: "0.6 mg", dose: "0.6", note: "Typical Clinical Starting Dose" },
-                { label: "1.2 mg", dose: "1.2" },
-				{ label: "1.8 mg", dose: "1.8" },
-                { label: "2.4 mg", dose: "2.4" },
-                { label: "3 mg", dose: "3" note:"Typical Clinical Max Dose (maintinance)" }
-              ]
-            },
-			{
-              id: "maz",
-              name: "Mazduutide",
-              notes: [
-                "DEMO ONLY. Replace this with your own dose-protocols.json.",
-                "These are just example preset buttons to prove the UI wiring works."
-              ],
-              doses: [
-                { label: "0.1 mg", dose: "0.1", note: "micro starter dose"},
-                { label: "0.25 mg", dose: "0.25" },
-				{ label: "0.5 mg", dose: "0.5" },
-                { label: "1 mg", dose: "1" },
-                { label: "2 mg", dose: "2" }
-              ]
-            },
-          ]
-        },
-        {
-          name: "Mitochondrial Peptides",
-          protocols: [
-            {
-              id: "motsc",
-              name: "MOTS-C",
-              notes: [
-                "DEMO ONLY.",
-                "You can include multiple note lines; they render with line breaks."
-              ],
-              doses: [
-                { label: "0.05 mg", dose: "0.05" },
-                { label: "0.10 mg", dose: "0.10" },
-                { label: "0.15 mg", dose: "0.15" },
-                { label: "0.20 mg", dose: "0.20" }
-              ]
-            }
-          ]
-        }
-      ]
-    };
+  <div class="warning-overlay" id="nonStandardWarning" role="alertdialog" aria-modal="true" aria-labelledby="warningTitle">
+    <div class="warning-bubble">
+      <h4 id="warningTitle">Non-Standard Protocol Selected</h4>
+      <p id="warningMessage">Placeholder, 12345</p>
+      <div class="warning-actions">
+        <button type="button" class="warning-close" id="acknowledgeWarning">I Understand</button>
+      </div>
+    </div>
+  </div>
 
+  <div class="nonstandard-toast" id="nonstandardToast" role="status" aria-live="polite">
+    You've selected a non-standard dose, please see the dose notes for more information
+  </div>
+
+  <script>
     const DEFAULT_PRESET_DOSES = [
-      { label: "0.25 mg", dose: "0.25" },
-      { label: "0.5 mg", dose: "0.5" },
-      { label: "1 mg", dose: "1" },
-      { label: "2.5 mg", dose: "2.5" }
+      { label: "0.25 mg", dose: "0.25", standard: 1 },
+      { label: "0.5 mg", dose: "0.5", standard: 1 },
+      { label: "1 mg", dose: "1", standard: 1 },
+      { label: "2.5 mg", dose: "2.5", standard: 1 }
     ];
 
     const STORAGE_KEY = "dosecalc.selectedProtocolId";
 
     let protocolLibrary = null;
-    let protocolIndex = new Map(); // id -> protocol
+    let protocolIndex = new Map();
     let selectedProtocolId = null;
+    let selectedDoseNote = null;
+    let currentNonStandardList = null;
+    let currentNonStandardToggle = null;
+    let nonStandardToastTimer = null;
+
+    function showNonStandardWarning() {
+      const overlay = document.getElementById("nonStandardWarning");
+      if (overlay) overlay.classList.add("open");
+    }
+
+    function hideNonStandardWarning() {
+      const overlay = document.getElementById("nonStandardWarning");
+      if (overlay) overlay.classList.remove("open");
+    }
 
     function parseWithFractions(raw) {
       if (typeof raw !== "string") return 0;
@@ -502,15 +424,8 @@
 
       const integerPart = Math.floor(numeric);
 
-      // Normalize common third inputs:
-      //   ".33" => 1/3
-      //   ".66/.67" => 2/3
-      if (trimmed.includes(".33")) {
-        return integerPart + 1 / 3;
-      }
-      if (trimmed.includes(".66") || trimmed.includes(".67")) {
-        return integerPart + 2 / 3;
-      }
+      if (trimmed.includes(".33")) return integerPart + 1 / 3;
+      if (trimmed.includes(".66") || trimmed.includes(".67")) return integerPart + 2 / 3;
 
       return numeric;
     }
@@ -525,24 +440,15 @@
       const desiredDoseMg = parseWithFractions(desiredStr);
 
       let dosePerMl = 0;
-      if (reconVolumeMl > 0) {
-        dosePerMl = vialContentMg / reconVolumeMl;
-      }
+      if (reconVolumeMl > 0) dosePerMl = vialContentMg / reconVolumeMl;
 
       let requiredVolumeMl = 0;
-      if (dosePerMl > 0 && desiredDoseMg > 0) {
-        requiredVolumeMl = desiredDoseMg / dosePerMl;
-      }
+      if (dosePerMl > 0 && desiredDoseMg > 0) requiredVolumeMl = desiredDoseMg / dosePerMl;
 
-      // Display dose per mL
       const dosePerMlDisplay = document.getElementById("dosePerMlDisplay");
-      if (dosePerMl > 0 && isFinite(dosePerMl)) {
-        dosePerMlDisplay.textContent = dosePerMl.toFixed(3) + " mg/mL";
-      } else {
-        dosePerMlDisplay.textContent = "0.000 mg/mL";
-      }
+      if (dosePerMl > 0 && isFinite(dosePerMl)) dosePerMlDisplay.textContent = dosePerMl.toFixed(3) + " mg/mL";
+      else dosePerMlDisplay.textContent = "0.000 mg/mL";
 
-      // Display required units / volume (1 mL = 100 Units on insulin syringe)
       const requiredUnitsDisplay = document.getElementById("requiredUnitsDisplay");
       if (requiredVolumeMl > 0 && isFinite(requiredVolumeMl)) {
         const units = Math.round(requiredVolumeMl * 100);
@@ -553,61 +459,147 @@
       }
     }
 
-    function safeText(v) {
-      return (v === undefined || v === null) ? "" : String(v);
+    function safeText(v) { return (v === undefined || v === null) ? "" : String(v); }
+
+    function escapeHtml(str) {
+      return safeText(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
     }
 
-    function normalizeLibrary(lib) {
-      // Accept either {sections:[...]} or {protocols:[...]} (flattened)
-      if (!lib || typeof lib !== "object") return { schemaVersion: 1, sections: [] };
+    function parseCsv(text) {
+      const rows = [];
+      let current = "";
+      let row = [];
+      let inQuotes = false;
 
-      let sections = [];
-      if (Array.isArray(lib.sections)) {
-        sections = lib.sections;
-      } else if (Array.isArray(lib.protocols)) {
-        sections = [{ name: safeText(lib.title || "Protocols"), protocols: lib.protocols }];
-      } else {
-        sections = [];
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        const next = text[i + 1];
+
+        if (ch === '"') {
+          if (inQuotes && next === '"') {
+            current += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+          continue;
+        }
+
+        if (ch === ',' && !inQuotes) {
+          row.push(current);
+          current = "";
+          continue;
+        }
+
+        if ((ch === "\n" || ch === "\r") && !inQuotes) {
+          if (ch === "\r" && next === "\n") i++;
+          row.push(current);
+          rows.push(row);
+          row = [];
+          current = "";
+          continue;
+        }
+
+        current += ch;
       }
 
-      // Normalize protocols + build ids if missing
-      const normalizedSections = sections.map((s, sIdx) => {
-        const name = safeText(s.name || `Section ${sIdx + 1}`);
-        const protos = Array.isArray(s.protocols) ? s.protocols : [];
-        const normalizedProtos = protos
-          .filter(p => p && typeof p === "object")
-          .map((p, pIdx) => {
-            const id = safeText(p.id || `${name.toLowerCase().replace(/\s+/g, "-")}-${pIdx + 1}`);
-            const proto = {
-              id,
-              name: safeText(p.name || id),
-              notes: p.notes,
-              doses: Array.isArray(p.doses) ? p.doses : []
-            };
-            return proto;
+      if (current.length || row.length) {
+        row.push(current);
+        rows.push(row);
+      }
+
+      if (!rows.length) return [];
+
+      const headers = rows.shift().map(h => h.trim());
+      return rows
+        .filter(r => r.some(cell => cell && cell.trim() !== ""))
+        .map(cells => {
+          const obj = {};
+          headers.forEach((h, idx) => {
+            obj[h] = cells[idx] !== undefined ? cells[idx].trim() : "";
           });
-        return { name, protocols: normalizedProtos };
+          return obj;
+        });
+    }
+
+    async function fetchCsv(path) {
+      const res = await fetch(path, { cache: "no-store" });
+      if (!res.ok) throw new Error(`Failed to load ${path}: ${res.status}`);
+      const text = await res.text();
+      return parseCsv(text);
+    }
+
+    function numericValue(value, fallback = 0) {
+      const n = parseFloat(value);
+      return isNaN(n) ? fallback : n;
+    }
+
+    function buildLibraryFromCsv(categories, items, doses) {
+      const title = categories[0]?.libraryTitle || "Protocol Library";
+      const schemaVersion = numericValue(categories[0]?.schemaVersion, 1);
+
+      const doseLookup = doses.reduce((acc, d) => {
+        const list = acc.get(d.itemId) || [];
+        list.push(d);
+        acc.set(d.itemId, list);
+        return acc;
+      }, new Map());
+
+      const sortedCategories = [...categories].sort((a, b) => numericValue(a.sortOrder) - numericValue(b.sortOrder));
+
+      const sections = sortedCategories.map((cat) => {
+        const sectionItems = items
+          .filter(it => it.categoryId === cat.categoryId)
+          .sort((a, b) => {
+            const byStandard = numericValue(b.standard) - numericValue(a.standard);
+            if (byStandard !== 0) return byStandard;
+            return numericValue(a.sortOrder) - numericValue(b.sortOrder);
+          })
+          .map(it => {
+            const doseList = (doseLookup.get(it.itemId) || [])
+              .sort((a, b) => numericValue(a.sortOrder) - numericValue(b.sortOrder))
+              .map(d => ({
+                label: safeText(d.button || d.label || `${d.dose} mg`),
+                dose: safeText(d.dose),
+                note: safeText(d.doseNotes),
+                standard: numericValue(d.standard, 1)
+              }));
+
+            return {
+              id: safeText(it.itemId || it.itemName),
+              name: safeText(it.itemName || it.itemId),
+              notes: safeText(it.notes),
+              doses: doseList,
+              standard: numericValue(it.standard, 1)
+            };
+          });
+
+        return { name: safeText(cat.categoryName || cat.categoryId), protocols: sectionItems };
       });
 
-      return {
-        schemaVersion: lib.schemaVersion || 1,
-        title: lib.title,
-        sections: normalizedSections
-      };
+      return { title, schemaVersion, sections };
     }
 
     async function loadProtocolLibrary() {
-      // Try external JSON first
       const sourceEl = document.getElementById("protocolSource");
       try {
-        const res = await fetch("./dose-protocols.json", { cache: "no-store" });
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        const json = await res.json();
-        sourceEl.textContent = "Loaded protocols from dose-protocols.json";
-        return { library: normalizeLibrary(json), source: "external" };
-      } catch (e) {
-        sourceEl.textContent = "Using built-in example protocols (dose-protocols.json not found)";
-        return { library: normalizeLibrary(BUILTIN_PROTOCOL_LIBRARY), source: "builtin" };
+        const [categories, items, doses] = await Promise.all([
+          fetchCsv("./protocols/categories.csv"),
+          fetchCsv("./protocols/items.csv"),
+          fetchCsv("./protocols/doses.csv"),
+        ]);
+        const library = buildLibraryFromCsv(categories, items, doses);
+        sourceEl.textContent = "Loaded from /protocols CSV files";
+        return { library, source: "csv" };
+      } catch (err) {
+        console.error(err);
+        sourceEl.textContent = "Using fallback presets (CSV load failed)";
+        return { library: { schemaVersion: 1, title: "Fallback", sections: [] }, source: "fallback" };
       }
     }
 
@@ -620,69 +612,54 @@
       });
     }
 
-    function renderProtocolList(lib) {
-      const container = document.getElementById("protocolList");
-      container.innerHTML = "";
+    function renderProtocolDropdown(lib) {
+      const select = document.getElementById("protocolSelect");
+      const previous = select.value;
+      select.innerHTML = "";
 
-      if (!lib.sections.length) {
-        container.innerHTML = '<div class="small">No protocols found.</div>';
-        return;
-      }
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "";
+      defaultOption.textContent = "Default preset doses";
+      select.appendChild(defaultOption);
 
       lib.sections.forEach((section) => {
-        const details = document.createElement("details");
-        details.className = "proto-details";
-        details.open = true;
-
-        const summary = document.createElement("summary");
-        summary.innerHTML = '<span>' + escapeHtml(section.name) + '</span><span class="chev">▾</span>';
-
-        const list = document.createElement("div");
-        list.className = "proto-list";
+        const group = document.createElement("optgroup");
+        group.label = section.name;
 
         section.protocols.forEach((proto) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "proto-item";
-          btn.setAttribute("data-proto-id", proto.id);
-
-          const sub = (proto.doses && proto.doses.length) ? `${proto.doses.length} preset dose button(s)` : "No preset doses";
-          btn.innerHTML = '<span class="proto-name">' + escapeHtml(proto.name) + '</span>'
-                        + '<span class="proto-sub">' + escapeHtml(sub) + '</span>';
-
-          btn.addEventListener("click", () => selectProtocol(proto.id));
-          list.appendChild(btn);
+          const option = document.createElement("option");
+          option.value = proto.id;
+          option.textContent = proto.name;
+          group.appendChild(option);
         });
 
-        details.appendChild(summary);
-        details.appendChild(list);
-        container.appendChild(details);
+        select.appendChild(group);
       });
 
-      syncProtocolActiveStyles();
-    }
-
-    function escapeHtml(str) {
-      return safeText(str)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+      if (selectedProtocolId && protocolIndex.has(selectedProtocolId)) {
+        select.value = selectedProtocolId;
+      } else if (previous && select.querySelector(`option[value="${previous}"]`)) {
+        select.value = previous;
+      } else {
+        select.value = "";
+      }
     }
 
     function syncProtocolActiveStyles() {
-      const items = document.querySelectorAll(".proto-item[data-proto-id]");
-      items.forEach(el => {
-        const id = el.getAttribute("data-proto-id");
-        if (id && id === selectedProtocolId) el.classList.add("active");
-        else el.classList.remove("active");
-      });
+      const select = document.getElementById("protocolSelect");
+      if (select) select.value = selectedProtocolId || "";
     }
 
     function notesToText(notes) {
       if (Array.isArray(notes)) return notes.map(safeText).filter(Boolean).join("\n\n");
       return safeText(notes);
+    }
+
+    function notesToHtml(notes) {
+      const text = notesToText(notes);
+      if (!text) return "";
+      const escaped = escapeHtml(text);
+      return escaped.replace(/\\n/g, "<br>").replace(/\n/g, "<br>");
     }
 
     function resolvePresetDoses() {
@@ -694,24 +671,100 @@
     function renderPresetButtons(doses) {
       const container = document.getElementById("presetButtons");
       container.innerHTML = "";
+      closeNonStandardList();
 
-      doses.forEach((d) => {
+      const standardButtons = [];
+      const nonStandardButtons = [];
+
+      const createDoseButton = (d, idx, kind) => {
         const label = safeText(d.label || (d.dose !== undefined ? d.dose + " mg" : ""));
         const doseStr = safeText(d.dose !== undefined ? d.dose : "");
+        const doseNote = notesToText(d.note);
 
         const btn = document.createElement("button");
         btn.className = "pill-button";
         btn.type = "button";
         btn.textContent = label || doseStr;
+        btn.dataset.doseKey = `${kind}-${idx}-${doseStr}`;
 
         btn.addEventListener("click", () => {
           const desiredInput = document.getElementById("desiredDose");
           desiredInput.value = doseStr;
+          selectedDoseNote = doseNote;
+
+          container.querySelectorAll(".pill-button").forEach(el => el.classList.remove("active"));
+          btn.classList.add("active");
+
+          renderNotes();
           recalc();
+
+          if (kind === "nonstandard") {
+            showNonStandardToast();
+          }
         });
 
-        container.appendChild(btn);
+        return btn;
+      };
+
+      doses.forEach((d, idx) => {
+        if (numericValue(d.standard, 1) === 0) {
+          nonStandardButtons.push(createDoseButton(d, idx, "nonstandard"));
+        } else {
+          standardButtons.push(createDoseButton(d, idx, "standard"));
+        }
       });
+
+      if (nonStandardButtons.length) {
+        const toggle = document.createElement("button");
+        toggle.className = "pill-button nonstandard-toggle";
+        toggle.type = "button";
+        toggle.textContent = "Non-Standard";
+
+        const nonStdList = document.createElement("div");
+        nonStdList.className = "nonstandard-list";
+        nonStandardButtons.forEach(btn => nonStdList.appendChild(btn));
+
+        nonStdList.addEventListener("click", (event) => event.stopPropagation());
+
+        toggle.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const isOpen = !nonStdList.classList.contains("open");
+          closeNonStandardList();
+          if (isOpen) {
+            nonStdList.classList.add("open");
+            toggle.classList.add("active");
+            currentNonStandardList = nonStdList;
+            currentNonStandardToggle = toggle;
+          }
+        });
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "nonstandard-wrapper";
+        wrapper.appendChild(toggle);
+        wrapper.appendChild(nonStdList);
+
+        container.appendChild(wrapper);
+      }
+
+      standardButtons.forEach(btn => container.appendChild(btn));
+    }
+
+    function closeNonStandardList() {
+      if (currentNonStandardList) currentNonStandardList.classList.remove("open");
+      if (currentNonStandardToggle) currentNonStandardToggle.classList.remove("active");
+      currentNonStandardList = null;
+      currentNonStandardToggle = null;
+    }
+
+    function showNonStandardToast() {
+      const toast = document.getElementById("nonstandardToast");
+      if (!toast) return;
+      toast.classList.add("show");
+
+      if (nonStandardToastTimer) clearTimeout(nonStandardToastTimer);
+      nonStandardToastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+      }, 4000);
     }
 
     function renderNotes() {
@@ -722,46 +775,46 @@
       const proto = selectedProtocolId ? protocolIndex.get(selectedProtocolId) : null;
       if (!proto) {
         titleEl.textContent = "No protocol selected";
-        subtitleEl.textContent = "Preset dose buttons use the built-in defaults.";
-        notesEl.textContent = "Pick a protocol from the left to load its preset dose buttons and show its notes here.";
+        subtitleEl.textContent = "Preset dose buttons use the default presets.";
+        notesEl.innerHTML = escapeHtml("Pick a protocol from the dropdown to load its preset dose buttons and notes.");
         return;
       }
 
       titleEl.textContent = proto.name || proto.id;
       subtitleEl.textContent = "Preset dose buttons loaded from the selected protocol.";
-      const notesText = notesToText(proto.notes) || "No notes provided for this protocol.";
-      notesEl.textContent = notesText;
+
+      const itemNotesHtml = notesToHtml(proto.notes) || escapeHtml("No notes provided for this protocol.");
+      const doseNotesHtml = selectedDoseNote && notesToText(selectedDoseNote).trim()
+        ? notesToHtml(selectedDoseNote)
+        : escapeHtml("No dose note selected.");
+
+      notesEl.innerHTML = `${itemNotesHtml}<br><br><strong>Dose Notes:</strong><br>${doseNotesHtml}`;
     }
 
     function selectProtocol(protoId) {
       if (!protoId || !protocolIndex.has(protoId)) return;
+      const proto = protocolIndex.get(protoId);
       selectedProtocolId = protoId;
+      selectedDoseNote = null;
       localStorage.setItem(STORAGE_KEY, protoId);
       syncProtocolActiveStyles();
       renderNotes();
       renderPresetButtons(resolvePresetDoses());
       recalc();
+
+      if (numericValue(proto.standard, 1) === 0) showNonStandardWarning();
+      else hideNonStandardWarning();
     }
 
     function clearProtocolSelection() {
       selectedProtocolId = null;
+      selectedDoseNote = null;
       localStorage.removeItem(STORAGE_KEY);
       syncProtocolActiveStyles();
       renderNotes();
       renderPresetButtons(resolvePresetDoses());
       recalc();
-    }
-
-    function initSidebarToggle() {
-      const sidebar = document.getElementById("sidebar");
-      const toggleBtn = document.getElementById("sidebarToggle");
-
-      // Only collapse on wide screens (since small screens are already stacked)
-      toggleBtn.addEventListener("click", () => {
-        if (window.matchMedia("(min-width: 981px)").matches) {
-          sidebar.classList.toggle("collapsed");
-        }
-      });
+      hideNonStandardWarning();
     }
 
     document.addEventListener("DOMContentLoaded", async function () {
@@ -770,30 +823,43 @@
         document.getElementById("reconVolume"),
         document.getElementById("desiredDose"),
       ];
-      inputs.forEach(function (input) {
-        input.addEventListener("input", recalc);
-      });
+      inputs.forEach(function (input) { input.addEventListener("input", recalc); });
 
-      initSidebarToggle();
+      const warningAck = document.getElementById("acknowledgeWarning");
+      if (warningAck) warningAck.addEventListener("click", hideNonStandardWarning);
 
       const loaded = await loadProtocolLibrary();
       protocolLibrary = loaded.library;
       buildIndex(protocolLibrary);
-      renderProtocolList(protocolLibrary);
+      renderProtocolDropdown(protocolLibrary);
+
+      document.getElementById("protocolSelect").addEventListener("change", (event) => {
+        const value = event.target.value;
+        if (value) selectProtocol(value);
+        else clearProtocolSelection();
+      });
 
       document.getElementById("clearProtocol").addEventListener("click", clearProtocolSelection);
 
-      // Restore previous selection if it still exists
+      document.addEventListener("click", (event) => {
+        if (!currentNonStandardList) return;
+        const isToggle = currentNonStandardToggle && currentNonStandardToggle.contains(event.target);
+        const isList = currentNonStandardList && currentNonStandardList.contains(event.target);
+        if (!isToggle && !isList) closeNonStandardList();
+      });
+
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored && protocolIndex.has(stored)) {
-        selectedProtocolId = stored;
+        selectProtocol(stored);
       } else {
         selectedProtocolId = null;
+        selectedDoseNote = null;
+        hideNonStandardWarning();
+        syncProtocolActiveStyles();
+        renderNotes();
+        renderPresetButtons(resolvePresetDoses());
+        recalc();
       }
-
-      renderNotes();
-      renderPresetButtons(resolvePresetDoses());
-      recalc();
     });
   </script>
 </body>
