@@ -110,8 +110,8 @@
       grid-template-columns: 1fr;
       gap: 12px;
       grid-template-areas:
-        "notes"
-        "calc";
+        "calc"
+        "notes";
       min-height: 0;
       flex: 1;
     }
@@ -146,6 +146,20 @@
       #notesPanel .notes-body {
         flex: 1;
         overflow: auto;
+      }
+
+      #notesPanel .notes-body {
+        background: #0f172a;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px;
+        gap: 8px;
+      }
+
+      #notesPanel .notes-section {
+        background: transparent;
+        border: none;
+        padding: 0;
       }
     }
 
@@ -199,14 +213,20 @@
     .notes h3 { margin: 0 0 8px 0; font-size: 1.05rem; }
     .notes .notes-meta { font-size: 0.9rem; color: #cbd5e1; margin-bottom: 8px; }
     .notes .notes-body {
+      color: #e5e7eb;
+      line-height: 1.35;
+      min-height: 160px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .notes .notes-section {
       background: #0f172a;
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 12px;
-      color: #e5e7eb;
-      line-height: 1.35;
       white-space: pre-wrap;
-      min-height: 160px;
     }
 
     /* Non-standard warning */
@@ -367,7 +387,10 @@
       <div class="panel notes" id="notesPanel">
         <h3 id="protocolTitle">No protocol selected</h3>
         <div class="notes-meta" id="protocolSubtitle">Preset dose buttons use the default presets.</div>
-        <div class="notes-body" id="protocolNotes">Pick a protocol from the dropdown to load its preset dose buttons and notes.</div>
+        <div class="notes-body">
+          <div class="notes-section" id="protocolItemNotes">Pick a protocol from the dropdown to load its preset dose buttons and notes.</div>
+          <div class="notes-section" id="protocolDoseNotes"><strong>Dose Notes:</strong><br>No dose note selected.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -770,13 +793,15 @@
     function renderNotes() {
       const titleEl = document.getElementById("protocolTitle");
       const subtitleEl = document.getElementById("protocolSubtitle");
-      const notesEl = document.getElementById("protocolNotes");
+      const itemNotesEl = document.getElementById("protocolItemNotes");
+      const doseNotesEl = document.getElementById("protocolDoseNotes");
 
       const proto = selectedProtocolId ? protocolIndex.get(selectedProtocolId) : null;
       if (!proto) {
         titleEl.textContent = "No protocol selected";
         subtitleEl.textContent = "Preset dose buttons use the default presets.";
-        notesEl.innerHTML = escapeHtml("Pick a protocol from the dropdown to load its preset dose buttons and notes.");
+        itemNotesEl.innerHTML = escapeHtml("Pick a protocol from the dropdown to load its preset dose buttons and notes.");
+        doseNotesEl.innerHTML = "<strong>Dose Notes:</strong><br>No dose note selected.";
         return;
       }
 
@@ -788,7 +813,8 @@
         ? notesToHtml(selectedDoseNote)
         : escapeHtml("No dose note selected.");
 
-      notesEl.innerHTML = `${itemNotesHtml}<br><br><strong>Dose Notes:</strong><br>${doseNotesHtml}`;
+      itemNotesEl.innerHTML = itemNotesHtml;
+      doseNotesEl.innerHTML = `<strong>Dose Notes:</strong><br>${doseNotesHtml}`;
     }
 
     function selectProtocol(protoId) {
