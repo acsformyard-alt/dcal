@@ -110,13 +110,15 @@
       grid-template-columns: 1fr;
       gap: 12px;
       grid-template-areas:
-        "notes"
-        "calc";
+        "compound"
+        "calc"
+        "dose";
       min-height: 0;
       flex: 1;
     }
     #calculatorCard { grid-area: calc; }
-    #notesPanel { grid-area: notes; }
+    #notesPanel { grid-area: compound; }
+    #dosePanel { grid-area: dose; }
 
     @media (orientation: landscape) and (min-width: 640px) {
       .layout {
@@ -127,8 +129,11 @@
         height: calc(100vh - 200px);
       }
 
+      #notesPanel { grid-area: notes; }
+
       #calculatorCard,
-      #notesPanel {
+      #notesPanel,
+      #dosePanel {
         height: 100%;
         min-height: 0;
       }
@@ -146,6 +151,10 @@
       #notesPanel .notes-body {
         flex: 1;
         overflow: auto;
+      }
+
+      #dosePanel {
+        display: none;
       }
     }
 
@@ -197,16 +206,37 @@
 
     /* Notes panel */
     .notes h3 { margin: 0 0 8px 0; font-size: 1.05rem; }
+    .notes h4 { margin: 0 0 6px 0; font-size: 0.95rem; color: #e5e7eb; }
     .notes .notes-meta { font-size: 0.9rem; color: #cbd5e1; margin-bottom: 8px; }
     .notes .notes-body {
       background: #0f172a;
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 12px;
+      padding: 14px;
       color: #e5e7eb;
       line-height: 1.35;
-      white-space: pre-wrap;
       min-height: 160px;
+    }
+    .notes .notes-sections {
+      display: grid;
+      gap: 12px;
+    }
+    .notes .notes-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .notes .notes-content {
+      white-space: pre-wrap;
+    }
+
+    @media (orientation: landscape) and (min-width: 640px) {
+      .notes .notes-sections { gap: 16px; }
+      .notes .notes-section + .notes-section {
+        border-top: 1px solid var(--border);
+        padding-top: 12px;
+        margin-top: 12px;
+      }
     }
 
     /* Non-standard warning */
@@ -367,7 +397,24 @@
       <div class="panel notes" id="notesPanel">
         <h3 id="protocolTitle">No protocol selected</h3>
         <div class="notes-meta" id="protocolSubtitle">Preset dose buttons use the default presets.</div>
-        <div class="notes-body" id="protocolNotes">Pick a protocol from the dropdown to load its preset dose buttons and notes.</div>
+        <div class="notes-body">
+          <div class="notes-sections">
+            <div class="notes-section notes-section--compound">
+              <h4>Compound Notes</h4>
+              <div class="notes-content" id="protocolItemNotes">Pick a protocol from the dropdown to load its preset dose buttons and notes.</div>
+            </div>
+            <div class="notes-section notes-section--dose">
+              <h4>Dose Notes</h4>
+              <div class="notes-content" id="protocolDoseNotes">Select a dose to view dose-specific notes.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel notes" id="dosePanel">
+        <div class="notes-body">
+          <div class="notes-sections" id="dosePanelSections"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -767,16 +814,35 @@
       }, 4000);
     }
 
+    function syncNotesLayout(isWide) {
+      const notesSections = document.querySelector("#notesPanel .notes-sections");
+      const dosePanelSections = document.getElementById("dosePanelSections");
+      const doseSection = document.querySelector(".notes-section--dose");
+      if (!notesSections || !dosePanelSections || !doseSection) return;
+
+      if (isWide) {
+        if (doseSection.parentElement !== notesSections) {
+          notesSections.appendChild(doseSection);
+        }
+      } else {
+        if (doseSection.parentElement !== dosePanelSections) {
+          dosePanelSections.appendChild(doseSection);
+        }
+      }
+    }
+
     function renderNotes() {
       const titleEl = document.getElementById("protocolTitle");
       const subtitleEl = document.getElementById("protocolSubtitle");
-      const notesEl = document.getElementById("protocolNotes");
+      const itemNotesEl = document.getElementById("protocolItemNotes");
+      const doseNotesEl = document.getElementById("protocolDoseNotes");
 
       const proto = selectedProtocolId ? protocolIndex.get(selectedProtocolId) : null;
       if (!proto) {
         titleEl.textContent = "No protocol selected";
         subtitleEl.textContent = "Preset dose buttons use the default presets.";
-        notesEl.innerHTML = escapeHtml("Pick a protocol from the dropdown to load its preset dose buttons and notes.");
+        itemNotesEl.innerHTML = escapeHtml("Pick a protocol from the dropdown to load its preset dose buttons and notes.");
+        doseNotesEl.innerHTML = escapeHtml("Select a dose to view dose-specific notes.");
         return;
       }
 
@@ -788,7 +854,8 @@
         ? notesToHtml(selectedDoseNote)
         : escapeHtml("No dose note selected.");
 
-      notesEl.innerHTML = `${itemNotesHtml}<br><br><strong>Dose Notes:</strong><br>${doseNotesHtml}`;
+      itemNotesEl.innerHTML = itemNotesHtml;
+      doseNotesEl.innerHTML = doseNotesHtml;
     }
 
     function selectProtocol(protoId) {
@@ -847,6 +914,10 @@
         const isList = currentNonStandardList && currentNonStandardList.contains(event.target);
         if (!isToggle && !isList) closeNonStandardList();
       });
+
+      const wideLayoutQuery = window.matchMedia("(orientation: landscape) and (min-width: 640px)");
+      syncNotesLayout(wideLayoutQuery.matches);
+      wideLayoutQuery.addEventListener("change", (event) => syncNotesLayout(event.matches));
 
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored && protocolIndex.has(stored)) {
