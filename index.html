@@ -110,13 +110,15 @@
       grid-template-columns: 1fr;
       gap: 12px;
       grid-template-areas:
-        "notes"
-        "calc";
+        "compound"
+        "calc"
+        "dose";
       min-height: 0;
       flex: 1;
     }
     #calculatorCard { grid-area: calc; }
-    #notesPanel { grid-area: notes; }
+    #notesPanel { grid-area: compound; }
+    #doseNotesPanel { grid-area: dose; }
 
     @media (orientation: landscape) and (min-width: 640px) {
       .layout {
@@ -147,6 +149,9 @@
         flex: 1;
         overflow: auto;
       }
+
+      #notesPanel { grid-area: notes; }
+      #doseNotesPanel { display: none; }
     }
 
     @media (min-width: 1000px) {
@@ -238,6 +243,10 @@
         padding-top: 12px;
         margin-top: 12px;
       }
+    }
+
+    .notes-panel--dose {
+      display: block;
     }
 
     /* Non-standard warning */
@@ -409,6 +418,12 @@
               <div class="notes-content" id="protocolDoseNotes">Select a dose to view dose-specific notes.</div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div class="panel notes notes-panel--dose" id="doseNotesPanel" aria-hidden="true">
+        <div class="notes-body">
+          <div class="notes-sections" id="doseNotesSlot"></div>
         </div>
       </div>
     </div>
@@ -809,6 +824,23 @@
       }, 4000);
     }
 
+    function syncDosePanelPlacement(isDesktop) {
+      const dosePanel = document.getElementById("doseNotesPanel");
+      const doseSlot = document.getElementById("doseNotesSlot");
+      const notesSections = document.querySelector("#notesPanel .notes-sections");
+      const doseSection = document.querySelector(".notes-section--dose");
+
+      if (!dosePanel || !doseSlot || !notesSections || !doseSection) return;
+
+      if (isDesktop) {
+        if (doseSection.parentElement !== notesSections) notesSections.appendChild(doseSection);
+        dosePanel.setAttribute("aria-hidden", "true");
+      } else {
+        if (doseSection.parentElement !== doseSlot) doseSlot.appendChild(doseSection);
+        dosePanel.setAttribute("aria-hidden", "false");
+      }
+    }
+
     function renderNotes() {
       const titleEl = document.getElementById("protocolTitle");
       const subtitleEl = document.getElementById("protocolSubtitle");
@@ -863,12 +895,22 @@
     }
 
     document.addEventListener("DOMContentLoaded", async function () {
+      const notesLayoutQuery = window.matchMedia("(orientation: landscape) and (min-width: 640px)");
+      const handleNotesLayoutChange = () => syncDosePanelPlacement(notesLayoutQuery.matches);
+
       const inputs = [
         document.getElementById("vialContents"),
         document.getElementById("reconVolume"),
         document.getElementById("desiredDose"),
       ];
       inputs.forEach(function (input) { input.addEventListener("input", recalc); });
+
+      handleNotesLayoutChange();
+      if (typeof notesLayoutQuery.addEventListener === "function") {
+        notesLayoutQuery.addEventListener("change", handleNotesLayoutChange);
+      } else if (typeof notesLayoutQuery.addListener === "function") {
+        notesLayoutQuery.addListener(handleNotesLayoutChange);
+      }
 
       const warningAck = document.getElementById("acknowledgeWarning");
       if (warningAck) warningAck.addEventListener("click", hideNonStandardWarning);
